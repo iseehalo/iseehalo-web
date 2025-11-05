@@ -1,47 +1,140 @@
 <!doctype html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>iseehalo — Premium</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body { font-family: system-ui, sans-serif; max-width: 520px; margin: 40px auto; padding: 0 16px; }
-    button { padding: 12px 16px; border: 0; border-radius: 10px; cursor: pointer; }
-    .primary { background: #1DB954; color: white; font-weight: 700; }
-    input { width: 100%; padding: 10px; margin: 8px 0 16px; border-radius: 8px; border: 1px solid #ccc; }
-  </style>
-</head>
-<body>
-  <h1>iseehalo Premium</h1>
-  <p>Unlock ad-free listening and more. (Stripe Test Mode)</p>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>iseehalo Premium — Upgrade</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+    <style>
+      body {
+        font-family: 'Poppins', sans-serif;
+        background: #000;
+        color: #fff;
+        text-align: center;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
 
-  <label>Email (for receipt & account):</label>
-  <input id="email" type="email" placeholder="you@example.com" />
+      header {
+        margin-bottom: 1.5rem;
+      }
 
-  <button class="primary" id="subscribe-monthly">Subscribe — Monthly</button>
-  <button style="margin-left:8px" id="subscribe-yearly">Subscribe — Yearly</button>
+      .brand {
+        font-size: 2.5rem;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+      }
 
-  <p style="margin-top:20px;"><a href="/dashboard.html">Open Dashboard</a></p>
+      .brand .isee {
+        color: #fff;
+      }
 
-  <script>
-    // TODO: Replace these with your real Stripe price IDs
-    const monthlyPriceId = "price_1SPUilRqnZiLlXnzELy1FUkr";
-    //const yearlyPriceId  = "price_1SPCo5RuNvxoX4FZ6q48fG0C";
-    async function start(price_id) {
-      const email = document.getElementById("email").value.trim();
-      if (!email) { alert("Enter your email first"); return; }
-      const r = await fetch("/create-checkout-session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, price_id })
+      .brand .halo {
+        color: #FFD700; /* golden yellow */
+      }
+
+      p.subtitle {
+        color: #aaa;
+        font-size: 1rem;
+        max-width: 400px;
+        margin: 0 auto 2rem;
+      }
+
+      form {
+        max-width: 400px;
+        width: 100%;
+        margin: 0 auto;
+      }
+
+      input {
+        width: 100%;
+        padding: 0.8rem 1rem;
+        border: none;
+        border-radius: 10px;
+        font-size: 1rem;
+        margin-bottom: 1rem;
+        background: #111;
+        color: #fff;
+        outline: none;
+      }
+
+      button {
+        background: linear-gradient(90deg, #FFD700, #ffcc33);
+        color: #000;
+        font-weight: 600;
+        border: none;
+        border-radius: 10px;
+        font-size: 1rem;
+        padding: 0.8rem 1.5rem;
+        cursor: pointer;
+        width: 100%;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
+      }
+
+      a {
+        color: #FFD700;
+        text-decoration: none;
+        display: block;
+        margin-top: 1.5rem;
+        font-size: 0.95rem;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      footer {
+        margin-top: 3rem;
+        font-size: 0.8rem;
+        color: #777;
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <div class="brand">
+        <span class="isee">isee</span><span class="halo">halo</span>
+      </div>
+      <p class="subtitle">Unlock ad-free listening, offline access, and exclusive music experiences.</p>
+    </header>
+
+    <form id="subscriptionForm">
+      <input id="email" type="email" placeholder="Enter your email for receipt & account" required />
+      <button type="button" id="subscribeMonthly">Subscribe — $4.99 / month</button>
+    </form>
+
+    <a href="/dashboard">Go to your dashboard</a>
+
+    <footer>
+      <p>© 2025 <span class="isee">isee</span><span class="halo">halo</span> • All rights reserved</p>
+    </footer>
+
+    <script>
+      document.getElementById("subscribeMonthly").addEventListener("click", async () => {
+        const email = document.getElementById("email").value;
+        if (!email) return alert("Please enter a valid email.");
+
+        const res = await fetch("/create-checkout-session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, priceId: "price_YOUR_LIVE_MONTHLY_ID" }) // 👈 Replace with your LIVE monthly price ID
+        });
+
+        const data = await res.json();
+        if (data.url) window.location.href = data.url;
+        else alert("Unable to start checkout session. Please try again.");
       });
-      const j = await r.json();
-      if (j.error) return alert(j.error);
-      location.href = j.url;
-    }
-
-    document.getElementById("subscribe-monthly").onclick = () => start(monthlyPriceId);
-    //document.getElementById("subscribe-yearly").onclick  = () => start(yearlyPriceId);
-  </script>
-</body>
+    </script>
+  </body>
 </html>

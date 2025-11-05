@@ -34,7 +34,7 @@ const __dirname = path.dirname(__filename);
 const PUBLIC_DIR = path.join(__dirname, "public");
 const DB_PATH = path.join(__dirname, "db.json");
 
-// --- Resilient JSON helpers ---
+// --- Resilient JSON helpers (optional cache for webhooks) ---
 function readDB() {
   try {
     if (!fs.existsSync(DB_PATH)) return { users: {} };
@@ -80,7 +80,7 @@ async function ensureStripeCustomerForEmail(email) {
     try {
       const existing = await stripe.customers.retrieve(user.stripe_customer_id);
       if (!existing.deleted) return existing.id;
-    } catch (e) {
+    } catch {
       console.warn("Stale stripe_customer_id for", email, "— recreating");
       user.stripe_customer_id = null;
       updateUser(email, user);
@@ -118,7 +118,6 @@ app.get("/dashboard", (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, "dashboard.html"));
 });
 app.get("/success", (req, res) => {
-  // maps /success -> success.html so mobile "clean URLs" work
   res.sendFile(path.join(PUBLIC_DIR, "success.html"));
 });
 app.get("/cancel", (req, res) => {
@@ -145,7 +144,6 @@ app.post("/create-checkout-session", async (req, res) => {
       client_reference_id: email,
       line_items: [{ price, quantity: 1 }],
       allow_promotion_codes: true,
-      // success supports both /success and success.html (route above maps /success)
       success_url: `${process.env.BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
       cancel_url: `${process.env.BASE_URL}/cancel`
     });
@@ -157,18 +155,20 @@ app.post("/create-checkout-session", async (req, res) => {
   }
 });
 
-// --- Billing portal (optional) ---
+// --- Billing portal (lookup customer by email via Stripe) ---
 app.post("/create-portal-session", async (req, res) => {
   try {
     const { email } = req.body || {};
     if (!email) return res.status(400).json({ error: "email required" });
-    const db = readDB();
-    const user = db.users[email];
-    if (!user?.stripe_customer_id) return res.status(404).json({ error: "No Stripe customer for this email" });
+
+    const customers = await stripe.customers.list({ email, limit: 1 });
+    if (!customers.data.length) {
+      return res.status(404).json({ error: "No Stripe customer found for this email" });
+    }
 
     const portal = await stripe.billingPortal.sessions.create({
-      customer: user.stripe_customer_id,
-      return_url: `${process.env.BASE_URL}/dashboard`
+      customer: customers.data[0].id,
+      return_url: `${process.env.BASE_URL}/dashboard`,
     });
 
     res.json({ url: portal.url });
@@ -273,15 +273,56 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
   res.json({ received: true });
 });
 
-// --- Simple status endpoint for your dashboard ---
-app.get("/status", (req, res) => {
-  const email = req.query.email;
-  if (!email) return res.status(400).json({ error: "email required" });
-  const db = readDB();
-  res.json({ user: db.users[email] || null });
+// --- Simple status for dashboard (Stripe-backed; no db.json dependency) ---
+app.get("/status", async (req, res) => {
+  try {
+    const email = req.query.email;
+    if (!email) return res.status(400).json({ error: "email required" });
+
+    const customers = await stripe.customers.list({ email, limit: 1 });
+    if (!customers.data.length) {
+      return res.json({ user: null });
+    }
+
+    const customer = customers.data[0];
+    const subs = await stripe.subscriptions.list({
+      customer: customer.id,
+      status: "all",
+      limit: 1,
+    });
+
+    if (!subs.data.length) {
+      return res.json({
+        user: {
+          email,
+          stripe_customer_id: customer.id,
+          stripe_subscription_id: null,
+          is_premium: false,
+          current_period_end: null,
+        },
+      });
+    }
+
+    const sub = subs.data[0];
+    const premium = ["active", "trialing", "past_due"].includes(sub.status);
+
+    return res.json({
+      user: {
+        email,
+        stripe_customer_id: customer.id,
+        stripe_subscription_id: sub.id,
+        is_premium: premium,
+        current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+        status: sub.status,
+      },
+    });
+  } catch (err) {
+    console.error("status error:", err);
+    return res.status(500).json({ error: err.message || "status failed" });
+  }
 });
 
-// --- confirm-session (webhook fallback) ---
+// --- confirm-session (webhook fallback; optional but handy) ---
 app.post("/confirm-session", async (req, res) => {
   try {
     const { session_id, email } = req.body || {};
@@ -330,7 +371,7 @@ app.post("/confirm-session", async (req, res) => {
   }
 });
 
-// --- Start server (use Render's assigned port) ---
+// --- Start server (Render uses assigned port) ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`iseehalo web running at ${process.env.BASE_URL || `http://localhost:${PORT}`}`);

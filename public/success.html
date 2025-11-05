@@ -2,24 +2,98 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>Success — iseehalo</title>
+  <title>Success — Iseehalo Premium</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    :root {
+      --isee: #ffffff;
+      --halo: #f7e37c; /* pastel yellow */
+      --bg: #111;
+      --text: #f5f5f5;
+    }
+
+    body {
+      font-family: "Poppins", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      margin: 0;
+      padding: 1rem;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+    }
+
+    h1 span.halo {
+      color: var(--halo);
+    }
+
+    p {
+      margin: 0.5rem 0;
+      line-height: 1.5;
+      max-width: 400px;
+    }
+
+    #status {
+      margin-top: 1rem;
+      font-size: 1rem;
+      color: var(--halo);
+      font-weight: 500;
+    }
+
+    a, button {
+      background: var(--halo);
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      padding: 0.6rem 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      margin-top: 1.2rem;
+      transition: 0.3s;
+    }
+
+    a:hover, button:hover {
+      opacity: 0.8;
+    }
+
+    footer {
+      margin-top: 2rem;
+      font-size: 0.8rem;
+      opacity: 0.6;
+    }
+  </style>
 </head>
 <body>
-  <h1>Payment Success 🎉</h1>
-  <p>Thanks! We’re activating your premium.</p>
+  <h1><span class="isee">Isee</span><span class="halo">halo</span> Premium 🎉</h1>
+  <p>Thank you for subscribing! We’re activating your premium access.</p>
   <p id="status">Checking status...</p>
+
+  <button id="dashboardBtn">Go to Dashboard</button>
+  <a href="/">Back to Home</a>
+
+  <footer>© 2025 Iseehalo. All rights reserved.</footer>
 
   <script>
     const params = new URLSearchParams(location.search);
     const session_id = params.get("session_id");
     const email = params.get("email");
+    const BASE_URL = window.location.origin;
 
     async function confirmNow() {
       if (!session_id || !email) return;
 
       try {
-        const r = await fetch("/confirm-session", {
+        const r = await fetch(`${BASE_URL}/confirm-session`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ session_id, email }),
@@ -29,19 +103,22 @@
 
         const el = document.getElementById("status");
         if (data.ok && data.premium) {
-          if (el) el.textContent = "Premium is active. Enjoy!";
+          el.textContent = "✨ Premium is active! Enjoy ad-free listening.";
         } else {
-          if (el) el.textContent = "Still verifying… try refresh in a few seconds.";
+          el.textContent = "⏳ Still verifying… try refreshing in a few seconds.";
         }
       } catch (err) {
         console.error(err);
+        document.getElementById("status").textContent = "Error verifying your subscription.";
       }
     }
 
-    // run immediately after landing on success page
+    document.getElementById("dashboardBtn").addEventListener("click", () => {
+      window.location.href = `${BASE_URL}/dashboard`;
+    });
+
     confirmNow();
   </script>
-
-  <p><a href="/">Back to home</a></p>
 </body>
 </html>
+

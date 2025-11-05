@@ -128,8 +128,7 @@
         const res = await fetch("/create-checkout-session", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, priceId: "price_YOUR_LIVE_MONTHLY_ID" }) // 👈 Replace with your LIVE monthly price ID
-        });
+          body: JSON.stringify({ email, priceId: "price_1SPUilRqnZiLlXnzELy1FUkr" }) 
 
         const data = await res.json();
         if (data.url) window.location.href = data.url;

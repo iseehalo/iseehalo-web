@@ -19,85 +19,26 @@
         justify-content: center;
         align-items: center;
       }
-
-      header {
-        margin-bottom: 1.5rem;
-      }
-
-      .brand {
-        font-size: 2.5rem;
-        font-weight: 700;
-        letter-spacing: -0.5px;
-      }
-
-      .brand .isee {
-        color: #fff;
-      }
-
-      .brand .halo {
-        color: #FFF59E; 
-      }
-
-      p.subtitle {
-        color: #aaa;
-        font-size: 1rem;
-        max-width: 400px;
-        margin: 0 auto 2rem;
-      }
-
-      form {
-        max-width: 400px;
-        width: 100%;
-        margin: 0 auto;
-      }
-
+      header { margin-bottom: 1.5rem; }
+      .brand { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.5px; }
+      .brand .isee { color: #fff; }
+      .brand .halo { color: #FFF59E; }
+      p.subtitle { color: #aaa; font-size: 1rem; max-width: 400px; margin: 0 auto 2rem; }
+      form { max-width: 400px; width: 100%; margin: 0 auto; }
       input {
-        width: 100%;
-        padding: 0.8rem 1rem;
-        border: none;
-        border-radius: 10px;
-        font-size: 1rem;
-        margin-bottom: 1rem;
-        background: #111;
-        color: #fff;
-        outline: none;
+        width: 100%; padding: 0.8rem 1rem; border: none; border-radius: 10px;
+        font-size: 1rem; margin-bottom: 1rem; background: #111; color: #fff; outline: none;
       }
-
       button {
         background: linear-gradient(90deg, #FFD700, #ffcc33);
-        color: #000;
-        font-weight: 600;
-        border: none;
-        border-radius: 10px;
-        font-size: 1rem;
-        padding: 0.8rem 1.5rem;
-        cursor: pointer;
-        width: 100%;
+        color: #000; font-weight: 600; border: none; border-radius: 10px;
+        font-size: 1rem; padding: 0.8rem 1.5rem; cursor: pointer; width: 100%;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
       }
-
-      button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3);
-      }
-
-      a {
-        color: #FFF59E;
-        text-decoration: none;
-        display: block;
-        margin-top: 1.5rem;
-        font-size: 0.95rem;
-      }
-
-      a:hover {
-        text-decoration: underline;
-      }
-
-      footer {
-        margin-top: 3rem;
-        font-size: 0.8rem;
-        color: #777;
-      }
+      button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3); }
+      a { color: #FFF59E; text-decoration: none; display: block; margin-top: 1.5rem; font-size: 0.95rem; }
+      a:hover { text-decoration: underline; }
+      footer { margin-top: 3rem; font-size: 0.8rem; color: #777; }
     </style>
   </head>
 
@@ -121,18 +62,38 @@
     </footer>
 
     <script>
+      const BASE_URL = window.location.origin;
+
       document.getElementById("subscribeMonthly").addEventListener("click", async () => {
-        const email = document.getElementById("email").value;
+        const email = (document.getElementById("email").value || "").trim();
         if (!email) return alert("Please enter a valid email.");
 
-        const res = await fetch("/create-checkout-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, priceId: "price_1SPUilRqnZiLlXnzELy1FUkr" }) 
+        try {
+          const res = await fetch(`${BASE_URL}/create-checkout-session`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            // OPTION A (recommended): rely on server env STRIPE_PRICE_ID
+            body: JSON.stringify({ email })
 
-        const data = await res.json();
-        if (data.url) window.location.href = data.url;
-        else alert("Unable to start checkout session. Please try again.");
+            // OPTION B (hardcode a LIVE price id — uncomment and replace):
+            // body: JSON.stringify({ email, priceId: "price_live_XXXXXXXXXXXX" })
+          });
+
+          const data = await res.json();
+          if (!res.ok) {
+            console.error("Checkout error:", data);
+            alert(data.error || "Unable to start checkout session.");
+            return;
+          }
+          if (data.url) {
+            window.location.href = data.url;
+          } else {
+            alert("No checkout URL returned.");
+          }
+        } catch (err) {
+          console.error(err);
+          alert("Network error starting checkout.");
+        }
       });
     </script>
   </body>

@@ -1,13 +1,12 @@
 // server.js (ESM)
 // ----------------
-// Requirements in package.json:
-//  "type": "module",
-//  deps: express, stripe, dotenv, cors
+// package.json needs:  "type": "module"
+// deps: express, stripe, dotenv, cors
 //
 // ENV needed:
-//  STRIPE_SECRET_KEY=sk_test_...
+//  STRIPE_SECRET_KEY=sk_live_... (or sk_test_...)
 //  STRIPE_WEBHOOK_SECRET=whsec_...
-//  BASE_URL=http://localhost:3000
+//  BASE_URL=https://iseehalo-web.onrender.com   (or http://localhost:3000)
 //  STRIPE_PRICE_ID=price_...   (optional fallback)
 
 import express from "express";
@@ -21,15 +20,18 @@ import { fileURLToPath } from "url";
 dotenv.config();
 
 const app = express();
+app.set("trust proxy", 1); // good practice on Render/hosts behind proxy
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // Helpful boot log
 console.log("Stripe mode:", process.env.STRIPE_SECRET_KEY?.startsWith("sk_live") ? "LIVE" : "TEST");
 console.log("BASE_URL:", process.env.BASE_URL);
 
-// --- Absolute path for db.json to avoid dir confusion ---
+// --- Absolute paths ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const PUBLIC_DIR = path.join(__dirname, "public");
 const DB_PATH = path.join(__dirname, "db.json");
 
 // --- Resilient JSON helpers ---
@@ -53,7 +55,13 @@ function writeDB(data) {
 }
 function updateUser(email, patch) {
   const db = readDB();
-  const current = db.users[email] || { email, is_premium: false, current_period_end: null, stripe_customer_id: null, stripe_subscription_id: null };
+  const current = db.users[email] || {
+    email,
+    is_premium: false,
+    current_period_end: null,
+    stripe_customer_id: null,
+    stripe_subscription_id: null
+  };
   db.users[email] = { ...current, ...patch };
   writeDB(db);
   console.log("→ updated", email, patch);
@@ -68,7 +76,6 @@ async function ensureStripeCustomerForEmail(email) {
   const db = readDB();
   const user = db.users[email] || { email };
 
-  // 1) If we have a stored id, verify it exists here
   if (user.stripe_customer_id) {
     try {
       const existing = await stripe.customers.retrieve(user.stripe_customer_id);
@@ -80,7 +87,6 @@ async function ensureStripeCustomerForEmail(email) {
     }
   }
 
-  // 2) Try to reuse an existing customer by email in this account
   const found = await stripe.customers.list({ email, limit: 1 });
   if (found.data.length) {
     const id = found.data[0].id;
@@ -88,7 +94,6 @@ async function ensureStripeCustomerForEmail(email) {
     return id;
   }
 
-  // 3) Create a new one
   const created = await stripe.customers.create({ email });
   updateUser(email, { ...user, stripe_customer_id: created.id });
   return created.id;
@@ -101,16 +106,35 @@ app.use((req, res, next) => {
 });
 
 app.use(cors());
-app.use(express.static("public"));
+
+// --- Serve static assets from /public with absolute path ---
+app.use(express.static(PUBLIC_DIR));
+
+// --- Pretty routes that map to your HTML files ---
+app.get("/", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "index.html"));
+});
+app.get("/dashboard", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "dashboard.html"));
+});
+app.get("/success", (req, res) => {
+  // maps /success -> success.html so mobile "clean URLs" work
+  res.sendFile(path.join(PUBLIC_DIR, "success.html"));
+});
+app.get("/cancel", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "cancel.html"));
+});
+
+// --- Health check (optional) ---
+app.get("/healthz", (_req, res) => res.json({ ok: true }));
 
 // --- Create Checkout Session (subscriptions) ---
 app.post("/create-checkout-session", async (req, res) => {
   try {
-    const { email, price_id } = req.body || {};
+    const { email, price_id, priceId } = req.body || {};
     if (!email) return res.status(400).json({ error: "email required" });
 
-    // pick price: from client or fallback env
-    const price = price_id || process.env.STRIPE_PRICE_ID;
+    const price = price_id || priceId || process.env.STRIPE_PRICE_ID;
     if (!price) return res.status(400).json({ error: "price_id required (or set STRIPE_PRICE_ID in .env)" });
 
     const customerId = await ensureStripeCustomerForEmail(email);
@@ -118,17 +142,17 @@ app.post("/create-checkout-session", async (req, res) => {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
-      client_reference_id: email, // lets webhook map quickly
+      client_reference_id: email,
       line_items: [{ price, quantity: 1 }],
       allow_promotion_codes: true,
-      success_url: `${process.env.BASE_URL}/success.html?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
-      cancel_url: `${process.env.BASE_URL}/cancel.html`
+      // success supports both /success and success.html (route above maps /success)
+      success_url: `${process.env.BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
+      cancel_url: `${process.env.BASE_URL}/cancel`
     });
 
     res.json({ url: session.url });
   } catch (e) {
     console.error("create-checkout-session error:", e);
-    // Return text if JSON fails on client
     res.status(400).json({ error: e.message || "Checkout creation failed" });
   }
 });
@@ -144,7 +168,7 @@ app.post("/create-portal-session", async (req, res) => {
 
     const portal = await stripe.billingPortal.sessions.create({
       customer: user.stripe_customer_id,
-      return_url: `${process.env.BASE_URL}/dashboard.html`
+      return_url: `${process.env.BASE_URL}/dashboard`
     });
 
     res.json({ url: portal.url });
@@ -171,7 +195,6 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
   try {
     if (type === "checkout.session.completed") {
-      // Try to get email straight from the session
       const emailFromEvent =
         (obj.customer_details && obj.customer_details.email) ||
         obj.client_reference_id ||
@@ -179,11 +202,8 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
 
       const customerId = obj.customer;
       const subId = obj.subscription;
-
-      // Some payment methods create the subscription slightly after the session; retrieve to be safe
       const sub = subId ? await stripe.subscriptions.retrieve(subId) : null;
 
-      // Map to our user
       let email = emailFromEvent;
       if (!email) {
         const db = readDB();
@@ -198,7 +218,6 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
           stripe_subscription_id: sub.id
         });
       } else if (email && !sub) {
-        // Rare edge: session completed, but no sub id (e.g., delayed). Mark customer id, premium TBD.
         updateUser(email, { stripe_customer_id: customerId });
         console.log("⚠️  Session completed but no subscription yet; will update on subscription.created.");
       } else {
@@ -236,7 +255,6 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
       }
     }
 
-    // Optional: flag a grace period on payment failure
     if (type === "invoice.payment_failed") {
       const customerId = obj.customer;
       const db = readDB();
@@ -263,9 +281,7 @@ app.get("/status", (req, res) => {
   res.json({ user: db.users[email] || null });
 });
 
-// --- Start server ---
-const PORT = 3000;
-// Confirm a checkout session and update DB (webhook fallback)
+// --- confirm-session (webhook fallback) ---
 app.post("/confirm-session", async (req, res) => {
   try {
     const { session_id, email } = req.body || {};
@@ -273,16 +289,13 @@ app.post("/confirm-session", async (req, res) => {
       return res.status(400).json({ error: "session_id and email required" });
     }
 
-    // Get the checkout session with expanded subscription
     const session = await stripe.checkout.sessions.retrieve(session_id, {
       expand: ["subscription", "customer"],
     });
 
     const customerId = session.customer;
-    const sub = session.subscription; // may be null if still creating
+    let subscription = session.subscription;
 
-    // If subscription not expanded yet, try to find the latest one for the customer
-    let subscription = sub;
     if (!subscription) {
       const list = await stripe.subscriptions.list({
         customer: customerId,
@@ -292,7 +305,6 @@ app.post("/confirm-session", async (req, res) => {
       subscription = list.data[0] || null;
     }
 
-    // Update DB if we have a subscription
     if (subscription) {
       const premium = new Set(["active", "trialing", "past_due"]).has(subscription.status);
       updateUser(email, {
@@ -309,7 +321,6 @@ app.post("/confirm-session", async (req, res) => {
       return res.json({ ok: true, premium, subscription_id: subscription.id, status: subscription.status });
     }
 
-    // If we still don’t see a subscription, at least save the customer id
     updateUser(email, { stripe_customer_id: customerId });
     console.log("⚠ confirm-session: no subscription yet; saved customer only");
     return res.json({ ok: true, premium: false, subscription_id: null, status: "pending" });
@@ -319,8 +330,9 @@ app.post("/confirm-session", async (req, res) => {
   }
 });
 
+// --- Start server (use Render's assigned port) ---
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`iseehalo web running at ${process.env.BASE_URL}`);
-  // Ensure db.json exists
+  console.log(`iseehalo web running at ${process.env.BASE_URL || `http://localhost:${PORT}`}`);
   if (!fs.existsSync(DB_PATH)) writeDB({ users: {} });
 });

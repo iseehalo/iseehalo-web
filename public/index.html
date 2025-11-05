@@ -1,0 +1,47 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>iseehalo — Premium</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 520px; margin: 40px auto; padding: 0 16px; }
+    button { padding: 12px 16px; border: 0; border-radius: 10px; cursor: pointer; }
+    .primary { background: #1DB954; color: white; font-weight: 700; }
+    input { width: 100%; padding: 10px; margin: 8px 0 16px; border-radius: 8px; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <h1>iseehalo Premium</h1>
+  <p>Unlock ad-free listening and more. (Stripe Test Mode)</p>
+
+  <label>Email (for receipt & account):</label>
+  <input id="email" type="email" placeholder="you@example.com" />
+
+  <button class="primary" id="subscribe-monthly">Subscribe — Monthly</button>
+  <button style="margin-left:8px" id="subscribe-yearly">Subscribe — Yearly</button>
+
+  <p style="margin-top:20px;"><a href="/dashboard.html">Open Dashboard</a></p>
+
+  <script>
+    // TODO: Replace these with your real Stripe price IDs
+    const monthlyPriceId = "price_1SPUilRqnZiLlXnzELy1FUkr";
+    //const yearlyPriceId  = "price_1SPCo5RuNvxoX4FZ6q48fG0C";
+    async function start(price_id) {
+      const email = document.getElementById("email").value.trim();
+      if (!email) { alert("Enter your email first"); return; }
+      const r = await fetch("/create-checkout-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, price_id })
+      });
+      const j = await r.json();
+      if (j.error) return alert(j.error);
+      location.href = j.url;
+    }
+
+    document.getElementById("subscribe-monthly").onclick = () => start(monthlyPriceId);
+    //document.getElementById("subscribe-yearly").onclick  = () => start(yearlyPriceId);
+  </script>
+</body>
+</html>

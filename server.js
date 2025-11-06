@@ -17,6 +17,14 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+
 dotenv.config();
 
 const app = express();
@@ -53,19 +61,33 @@ function writeDB(data) {
     console.error("DB write error:", e.message);
   }
 }
-function updateUser(email, patch) {
+// --- Update user both locally and in Supabase ---
+async function updateUser(email, patch) {
+  // Update local JSON (backup / offline)
   const db = readDB();
   const current = db.users[email] || {
     email,
     is_premium: false,
     current_period_end: null,
     stripe_customer_id: null,
-    stripe_subscription_id: null
+    stripe_subscription_id: null,
   };
   db.users[email] = { ...current, ...patch };
   writeDB(db);
   console.log("→ updated", email, patch);
+
+  // 🔗 Also update Supabase
+  try {
+    const { error } = await supabase
+      .from("users")
+      .upsert([{ email, ...db.users[email] }]); // ensures record exists or is updated
+    if (error) console.error("Supabase sync error:", error.message);
+    else console.log("☁ synced to Supabase:", email);
+  } catch (err) {
+    console.error("Supabase connection failed:", err.message);
+  }
 }
+
 
 // --- Premium status helper ---
 const premiumStatuses = new Set(["active", "trialing", "past_due"]);

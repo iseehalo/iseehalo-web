@@ -52,79 +52,127 @@
   </div>
 
   <!-- Supabase client (global window.supabase) -->
-  <script type="module" src="/js/supabaseClient.js"></script>
-
   <script type="module">
-    const $ = (id) => document.getElementById(id);
-    const msg = $("msg");
-    const emailEl = $("email");
-    const passEl = $("password");
-    const origin = window.location.origin;
+  const $ = (id) => document.getElementById(id);
+  const msg = $("msg");
+  const emailEl = $("email");
+  const passEl = $("password");
+  const origin = window.location.origin;
 
-    function show(text, kind="") {
-      msg.textContent = text;
-      msg.className = `msg ${kind}`;
-    }
+  const show = (text, kind = "") => {
+    msg.textContent = text;
+    msg.className = `msg ${kind}`;
+  };
 
-    // Sign in
-    $("btnSignIn").addEventListener("click", async () => {
-      const email = emailEl.value.trim();
-      const password = passEl.value;
-      if (!email || !password) return show("Please enter email and password.","error");
-      show("Signing in…");
-
-      const { error } = await window.supabase.auth.signInWithPassword({ email, password });
-      if (error) return show(error.message, "error");
-
-      show("Signed in! Redirecting…","success");
-      window.location.href = "/dashboard";
+  const setBusy = (yes) => {
+    ["btnSignIn", "btnSignUp", "btnForgot"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.disabled = yes;
     });
+  };
 
-    // Sign up (email verification)
-    $("btnSignUp").addEventListener("click", async () => {
-      const email = emailEl.value.trim();
-      const password = passEl.value;
-      if (!email || !password) return show("Enter email and a password to create your account.","error");
-      show("Creating account…");
+  const withTimeout = (promise, ms = 15000) =>
+    Promise.race([
+      promise,
+      new Promise((_, rej) => setTimeout(() => rej(new Error("Request timed out")), ms)),
+    ]);
 
-      const { data, error } = await window.supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          // After the user clicks the verification link, send them back here
-          emailRedirectTo: `${origin}/auth.html?verified=1`
+  // Guard: make sure supabase client exists
+  if (!window.supabase) {
+    show("Auth library failed to load. Hard refresh (Ctrl/Cmd+Shift+R).", "error");
+  }
+
+  // Sign in
+  $("btnSignIn").addEventListener("click", async () => {
+    const email = emailEl.value.trim();
+    const password = passEl.value;
+    if (!email || !password) return show("Please enter email and password.", "error");
+
+    show("Signing in…");
+    setBusy(true);
+    try {
+      const { data, error } = await withTimeout(
+        window.supabase.auth.signInWithPassword({ email, password })
+      );
+
+      if (error) {
+        const msgText = (error.message || "").toLowerCase();
+        if (msgText.includes("email") && msgText.includes("confirm")) {
+          show("Please verify your email first (check your inbox).", "error");
+        } else if (msgText.includes("invalid login") || msgText.includes("invalid login credentials")) {
+          show("Invalid email or password.", "error");
+        } else {
+          show(error.message || "Sign in failed.", "error");
         }
-      });
-
-      if (error) return show(error.message, "error");
-      if (data?.user) {
-        show(`We sent a verification link to ${email}. Please verify, then sign in.`, "success");
-        passEl.value = "";
-      } else {
-        show("Check your email to verify your account.", "success");
+        return;
       }
-    });
 
-    // Forgot password (reset email)
-  $("btnForgot").addEventListener("click", async () => {
-  const email = emailEl.value.trim();
-  if (!email) return show("Type the email you used for your account first.", "error");
-  show("Sending reset email…");
-
-  const { error } = await window.supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/reset.html`
+      show("Signed in! Redirecting…", "success");
+      window.location.href = "/dashboard";
+    } catch (e) {
+      show(e.message === "Request timed out" ? "Network is slow — please try again." : "Sign in failed.", "error");
+    } finally {
+      setBusy(false);
+    }
   });
 
-  if (error) return show(error.message, "error");
-  show("Password reset email sent. Check your inbox.", "success");
-});
+  // Sign up (email link)
+  $("btnSignUp").addEventListener("click", async () => {
+    const email = emailEl.value.trim();
+    const password = passEl.value;
+    if (!email || !password) return show("Enter email and a password to create your account.", "error");
 
+    show("Creating account…");
+    setBusy(true);
+    try {
+      const { data, error } = await withTimeout(
+        window.supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: `${origin}/auth.html?verified=1` }
+        })
+      );
 
-    // If user returns after verifying email, show a friendly nudge
-    const url = new URL(location.href);
-    if (url.searchParams.get("verified") === "1") {
-      show("Email verified. You can now sign in.","success");
+      if (error) return show(error.message, "error");
+
+      // Supabase may or may not return user immediately; either way prompt user to verify
+      show(`We sent a verification link to ${email}. Please verify, then sign in.`, "success");
+      passEl.value = "";
+    } catch (e) {
+      show(e.message || "Sign up failed.", "error");
+    } finally {
+      setBusy(false);
     }
-  </script>
+  });
+
+  // Forgot password
+  $("btnForgot").addEventListener("click", async () => {
+    const email = emailEl.value.trim();
+    if (!email) return show("Type the email you used for your account first.", "error");
+
+    show("Sending reset email…");
+    setBusy(true);
+    try {
+      const { error } = await withTimeout(
+        window.supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${origin}/reset.html`
+        })
+      );
+      if (error) return show(error.message, "error");
+      show("Password reset email sent. Check your inbox.", "success");
+    } catch (e) {
+      show(e.message || "Could not send reset email.", "error");
+    } finally {
+      setBusy(false);
+    }
+  });
+
+  // Friendly nudge after verification
+  const url = new URL(location.href);
+  if (url.searchParams.get("verified") === "1") {
+    show("Email verified. You can now sign in.", "success");
+  }
+</script>
+
 </body>
 </html>

@@ -6,122 +6,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
     <!-- Supabase client -->
-    <script type="module" src="/js/supabaseClient.js"></script>
+ <script type="module" src="/js/supabaseClient.js"></script>
+<script type="module">
+  const BASE_URL = window.location.origin;
 
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
-    <style>
-      body {
-        font-family: 'Poppins', sans-serif;
-        background: #000;
-        color: #fff;
-        text-align: center;
-        margin: 0;
-        padding: 0;
-        min-height: 100vh;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-      }
-      header { margin-bottom: 1.5rem; }
-      .brand { font-size: 2.5rem; font-weight: 700; letter-spacing: -0.5px; }
-      .brand .isee { color: #fff; }
-      .brand .halo { color: #FFF59E; }
-      p.subtitle { color: #aaa; font-size: 1rem; max-width: 400px; margin: 0 auto 2rem; }
-      form { max-width: 400px; width: 100%; margin: 0 auto; }
-      input {
-        width: 100%; padding: 0.8rem 1rem; border: none; border-radius: 10px;
-        font-size: 1rem; margin-bottom: 1rem; background: #111; color: #fff; outline: none;
-      }
-      button {
-        background: linear-gradient(90deg, #FFD700, #ffcc33);
-        color: #000; font-weight: 600; border: none; border-radius: 10px;
-        font-size: 1rem; padding: 0.8rem 1.5rem; cursor:pointer; width: 100%;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-      }
-      button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255,215,0,0.3); }
-      a { color: #FFF59E; text-decoration: none; display: block; margin-top: 1.5rem; font-size: 0.95rem; }
-      a:hover { text-decoration: underline; }
-      footer { margin-top: 3rem; font-size: 0.8rem; color: #777; }
-    </style>
-  </head>
+  const ensureSignedIn = async () => {
+    const { data } = await window.supabase.auth.getSession();
+    return data?.session || null;
+  };
 
-  <body>
-    <header>
-      <div class="brand">
-        <span class="isee">isee</span><span class="halo">halo</span>
-      </div>
-      <p class="subtitle">Unlock ad-free listening, offline access, and exclusive music experiences.</p>
-    </header>
+  document.getElementById("subscribeMonthly").addEventListener("click", async () => {
+    const session = await ensureSignedIn();
+    if (!session) {
+      const go = confirm("You need an account to subscribe. Go to Sign in / Create account?");
+      if (go) window.location.href = "/auth.html";
+      return;
+    }
 
-    <form id="subscriptionForm">
-      <input id="email" type="email" placeholder="Enter your email" required readonly />
-      <button type="button" id="subscribeMonthly">Subscribe — $11.99 / month</button>
-    </form>
-
-    <a href="/dashboard">Go to your dashboard</a>
-
-    <footer>
-      <p>© 2025 <span class="isee">isee</span><span class="halo">halo</span> • All rights reserved</p>
-    </footer>
-
-    <!-- Require sign-in before subscribing -->
-    <script type="module">
-      const emailInput = document.getElementById("email");
-      const btn = document.getElementById("subscribeMonthly");
-      const BASE_URL = window.location.origin;
-
-      async function checkAuth() {
-        try {
-          const { data } = await window.supabase.auth.getUser();
-          const user = data?.user;
-
-          if (!user) {
-            // Not logged in — require account
-            window.location.href = "/auth.html";
-            return;
-          }
-
-          // Prefill their email (read-only)
-          emailInput.value = user.email || "";
-        } catch (err) {
-          console.error("Auth check error:", err);
-          alert("Authentication failed. Please sign in again.");
-          window.location.href = "/auth.html";
-        }
-      }
-
-      await checkAuth();
-
-      btn.addEventListener("click", async () => {
-        const email = emailInput.value.trim();
-        if (!email) return alert("Invalid email. Please sign in again.");
-
-        try {
-          const res = await fetch(`${BASE_URL}/create-checkout-session`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email })
-          });
-
-          const data = await res.json();
-          if (!res.ok) {
-            console.error("Checkout error:", data);
-            alert(data.error || "Unable to start checkout session.");
-            return;
-          }
-
-          if (data.url) {
-            window.location.href = data.url;
-          } else {
-            alert("No checkout URL returned.");
-          }
-        } catch (err) {
-          console.error(err);
-          alert("Network error starting checkout.");
-        }
+    // user is signed in – use their email for checkout
+    const email = session.user.email;
+    try {
+      const res = await fetch(`${BASE_URL}/create-checkout-session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // If your server has STRIPE_PRICE_ID env set, you only need to send the email:
+        body: JSON.stringify({ email })
+        // Or, to force a specific price id:
+        // body: JSON.stringify({ email, priceId: "price_XXXXXXXXXXXX" })
       });
-    </script>
+
+      const data = await res.json();
+      if (!res.ok) {
+        console.error("Checkout error:", data);
+        alert(data.error || "Unable to start checkout session.");
+        return;
+      }
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        alert("No checkout URL returned.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Network error starting checkout.");
+    }
+  });
+</script>
+
 
   </body>
 </html>

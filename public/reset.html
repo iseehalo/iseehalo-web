@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>iseehalo — Reset Password</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body { font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; background:#000; color:#fff;
+           display:flex; min-height:100vh; align-items:center; justify-content:center; margin:0; }
+    .card { width:100%; max-width:420px; background:#0f0f0f; border-radius:16px; padding:20px; box-shadow:0 8px 24px rgba(0,0,0,.35);}
+    h1 { margin:0 0 10px; font-size:22px; }
+    label { display:block; font-size:13px; color:#bbb; margin:12px 0 6px; }
+    input { width:100%; padding:12px 14px; border-radius:12px; border:1px solid #222; background:#121212; color:#fff; outline:none; }
+    .btn { width:100%; padding:12px 14px; border-radius:12px; border:0; cursor:pointer;
+           background:linear-gradient(90deg,#FFD700,#ffcc33); color:#000; font-weight:600; margin-top:12px; }
+    .msg { margin-top:10px; font-size:13px; color:#ddd; }
+    .success{color:#8ef18e;} .error{color:#ff7a7a;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Set a new password</h1>
+    <p class="msg" id="msg">Verifying reset link…</p>
+
+    <label for="newpass">New password</label>
+    <input id="newpass" type="password" placeholder="••••••••" />
+
+    <button class="btn" id="btnSave" disabled>Save new password</button>
+  </div>
+
+  <script type="module" src="/js/supabaseClient.js"></script>
+  <script type="module">
+    const $ = (id) => document.getElementById(id);
+    const msg = $("msg");
+    const btn = $("btnSave");
+    const newpass = $("newpass");
+
+    const parseHash = () => {
+      // Supabase sends access_token & refresh_token in the hash fragment
+      const h = new URLSearchParams(location.hash.slice(1));
+      return {
+        access_token: h.get("access_token"),
+        refresh_token: h.get("refresh_token"),
+        type: h.get("type") // 'recovery' for password reset
+      };
+    };
+
+    async function init() {
+      try {
+        const { access_token, refresh_token, type } = parseHash();
+        if (!access_token || !refresh_token || type !== "recovery") {
+          msg.textContent = "Invalid or expired reset link. Request a new one from the sign-in page.";
+          msg.className = "msg error";
+          return;
+        }
+        // Make the session active for this page so we can set a new password
+        const { error: sessErr } = await window.supabase.auth.setSession({ access_token, refresh_token });
+        if (sessErr) {
+          msg.textContent = sessErr.message;
+          msg.className = "msg error";
+          return;
+        }
+        msg.textContent = "Reset link verified. Enter a new password below.";
+        msg.className = "msg success";
+        btn.disabled = false;
+      } catch (e) {
+        console.error(e);
+        msg.textContent = "Something went wrong.";
+        msg.className = "msg error";
+      }
+    }
+
+    $("btnSave").addEventListener("click", async () => {
+      const pwd = newpass.value;
+      if (!pwd || pwd.length < 8) {
+        msg.textContent = "Password must be at least 8 characters.";
+        msg.className = "msg error";
+        return;
+      }
+      btn.disabled = true;
+      msg.textContent = "Updating password…";
+      try {
+        const { error } = await window.supabase.auth.updateUser({ password: pwd });
+        if (error) {
+          msg.textContent = error.message;
+          msg.className = "msg error";
+          btn.disabled = false;
+          return;
+        }
+        msg.textContent = "Password updated! You can now sign in.";
+        msg.className = "msg success";
+        setTimeout(() => (window.location.href = "/auth.html"), 1200);
+      } catch (e) {
+        console.error(e);
+        msg.textContent = "Could not update password.";
+        msg.className = "msg error";
+        btn.disabled = false;
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,48 +1,53 @@
 // server.js (ESM)
-// ----------------
-// package.json needs:  "type": "module"
-// deps: express, stripe, dotenv, cors
-//
-// ENV needed:
-//  STRIPE_SECRET_KEY=sk_live_... (or sk_test_...)
-//  STRIPE_WEBHOOK_SECRET=whsec_...
-//  BASE_URL=https://iseehalo-web.onrender.com   (or http://localhost:3000)
-//  STRIPE_PRICE_ID=price_...   (optional fallback)
+// package.json:  "type": "module"
+// deps: express, stripe, dotenv, cors, @supabase/supabase-js
+
+import dotenv from "dotenv";
+dotenv.config(); // ✅ load env BEFORE using process.env anywhere
 
 import express from "express";
-import dotenv from "dotenv";
 import Stripe from "stripe";
 import cors from "cors";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-
 import { createClient } from "@supabase/supabase-js";
 
+// --- Safety: check required env ---
+const requiredEnv = [
+  "STRIPE_SECRET_KEY",
+  "STRIPE_WEBHOOK_SECRET",
+  "BASE_URL",
+  "SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+];
+for (const k of requiredEnv) {
+  if (!process.env[k]) console.warn(`⚠️ Missing env ${k}`);
+}
+
+// --- Supabase (server-side, service role) ---
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-
-dotenv.config();
-
 const app = express();
-app.set("trust proxy", 1); // good practice on Render/hosts behind proxy
+app.set("trust proxy", 1);
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
-
-// Helpful boot log
-console.log("Stripe mode:", process.env.STRIPE_SECRET_KEY?.startsWith("sk_live") ? "LIVE" : "TEST");
+console.log(
+  "Stripe mode:",
+  process.env.STRIPE_SECRET_KEY?.startsWith("sk_live") ? "LIVE" : "TEST"
+);
 console.log("BASE_URL:", process.env.BASE_URL);
 
-// --- Absolute paths ---
+// --- Paths ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PUBLIC_DIR = path.join(__dirname, "public");
 const DB_PATH = path.join(__dirname, "db.json");
 
-// --- Resilient JSON helpers (optional cache for webhooks) ---
+// --- Tiny file DB (fallback / debug) ---
 function readDB() {
   try {
     if (!fs.existsSync(DB_PATH)) return { users: {} };
@@ -61,9 +66,14 @@ function writeDB(data) {
     console.error("DB write error:", e.message);
   }
 }
-// --- Update user both locally and in Supabase ---
+
+// --- Premium helpers ---
+const premiumStatuses = new Set(["active", "trialing", "past_due"]);
+const statusIsPremium = (status) => premiumStatuses.has(status);
+
+// --- Update user in file DB + Supabase (UPDATE by email only) ---
 async function updateUser(email, patch) {
-  // Update local JSON (backup / offline)
+  // 1) File DB (best-effort cache)
   const db = readDB();
   const current = db.users[email] || {
     email,
@@ -74,26 +84,48 @@ async function updateUser(email, patch) {
   };
   db.users[email] = { ...current, ...patch };
   writeDB(db);
-  console.log("→ updated", email, patch);
+  console.log("→ updated (fileDB)", email, patch);
 
-  // 🔗 Also update Supabase
+  // 2) Supabase (find user's id by email, then UPDATE)
   try {
-    const { error } = await supabase
+    const { data: row, error: selErr } = await supabase
       .from("users")
-      .upsert([{ email, ...db.users[email] }]); // ensures record exists or is updated
-    if (error) console.error("Supabase sync error:", error.message);
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (selErr) {
+      console.error("Supabase select error:", selErr.message);
+      return;
+    }
+    if (!row) {
+      // No row yet (user likely hasn't confirmed email). That’s OK—skip insert.
+      console.log("ℹ️ No Supabase row for email yet; will update after signup trigger creates it:", email);
+      return;
+    }
+
+    // Only update the columns we own from billing
+    const serverPatch = {
+      is_premium: patch.is_premium ?? undefined,
+      current_period_end: patch.current_period_end ?? undefined,
+      stripe_customer_id: patch.stripe_customer_id ?? undefined,
+      stripe_subscription_id: patch.stripe_subscription_id ?? undefined,
+      grace_until: patch.grace_until ?? undefined,
+    };
+
+    const { error: updErr } = await supabase
+      .from("users")
+      .update(serverPatch)
+      .eq("id", row.id);
+
+    if (updErr) console.error("Supabase update error:", updErr.message);
     else console.log("☁ synced to Supabase:", email);
   } catch (err) {
     console.error("Supabase connection failed:", err.message);
   }
 }
 
-
-// --- Premium status helper ---
-const premiumStatuses = new Set(["active", "trialing", "past_due"]);
-const statusIsPremium = (status) => premiumStatuses.has(status);
-
-// --- Ensure we always have a valid customer in THIS account/mode ---
+// --- Ensure Stripe customer by email ---
 async function ensureStripeCustomerForEmail(email) {
   const db = readDB();
   const user = db.users[email] || { email };
@@ -105,19 +137,19 @@ async function ensureStripeCustomerForEmail(email) {
     } catch {
       console.warn("Stale stripe_customer_id for", email, "— recreating");
       user.stripe_customer_id = null;
-      updateUser(email, user);
+      await updateUser(email, user);
     }
   }
 
   const found = await stripe.customers.list({ email, limit: 1 });
   if (found.data.length) {
     const id = found.data[0].id;
-    updateUser(email, { ...user, stripe_customer_id: id });
+    await updateUser(email, { ...user, stripe_customer_id: id });
     return id;
   }
 
   const created = await stripe.customers.create({ email });
-  updateUser(email, { ...user, stripe_customer_id: created.id });
+  await updateUser(email, { ...user, stripe_customer_id: created.id });
   return created.id;
 }
 
@@ -126,37 +158,29 @@ app.use((req, res, next) => {
   if (req.originalUrl === "/webhook") return next();
   return express.json()(req, res, next);
 });
-
 app.use(cors());
 
-// --- Serve static assets from /public with absolute path ---
+// --- Static ---
 app.use(express.static(PUBLIC_DIR));
 
-// --- Pretty routes that map to your HTML files ---
-app.get("/", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "index.html"));
-});
-app.get("/dashboard", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "dashboard.html"));
-});
-app.get("/success", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "success.html"));
-});
-app.get("/cancel", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "cancel.html"));
-});
+// --- Pages ---
+app.get("/", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "index.html")));
+app.get("/auth", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "auth.html")));
+app.get("/reset", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "reset.html")));
+app.get("/dashboard", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "dashboard.html")));
+app.get("/success", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "success.html")));
+app.get("/cancel", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "cancel.html")));
 
-// --- Health check (optional) ---
 app.get("/healthz", (_req, res) => res.json({ ok: true }));
 
-// --- Create Checkout Session (subscriptions) ---
+// --- Create Checkout Session ---
 app.post("/create-checkout-session", async (req, res) => {
   try {
     const { email, price_id, priceId } = req.body || {};
     if (!email) return res.status(400).json({ error: "email required" });
 
     const price = price_id || priceId || process.env.STRIPE_PRICE_ID;
-    if (!price) return res.status(400).json({ error: "price_id required (or set STRIPE_PRICE_ID in .env)" });
+    if (!price) return res.status(400).json({ error: "price_id required (or set STRIPE_PRICE_ID)" });
 
     const customerId = await ensureStripeCustomerForEmail(email);
 
@@ -167,7 +191,7 @@ app.post("/create-checkout-session", async (req, res) => {
       line_items: [{ price, quantity: 1 }],
       allow_promotion_codes: true,
       success_url: `${process.env.BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}&email=${encodeURIComponent(email)}`,
-      cancel_url: `${process.env.BASE_URL}/cancel`
+      cancel_url: `${process.env.BASE_URL}/cancel`,
     });
 
     res.json({ url: session.url });
@@ -177,7 +201,7 @@ app.post("/create-checkout-session", async (req, res) => {
   }
 });
 
-// --- Billing portal (lookup customer by email via Stripe) ---
+// --- Billing Portal ---
 app.post("/create-portal-session", async (req, res) => {
   try {
     const { email } = req.body || {};
@@ -200,7 +224,7 @@ app.post("/create-portal-session", async (req, res) => {
   }
 });
 
-// --- Webhook: flip premium status from Stripe events ---
+// --- Webhook ---
 app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;
@@ -229,18 +253,18 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
       let email = emailFromEvent;
       if (!email) {
         const db = readDB();
-        email = Object.keys(db.users).find(e => db.users[e].stripe_customer_id === customerId) || null;
+        email = Object.keys(db.users).find((e) => db.users[e].stripe_customer_id === customerId) || null;
       }
 
       if (email && sub) {
-        updateUser(email, {
+        await updateUser(email, {
           stripe_customer_id: customerId,
           is_premium: statusIsPremium(sub.status),
           current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
-          stripe_subscription_id: sub.id
+          stripe_subscription_id: sub.id,
         });
       } else if (email && !sub) {
-        updateUser(email, { stripe_customer_id: customerId });
+        await updateUser(email, { stripe_customer_id: customerId });
         console.log("⚠️  Session completed but no subscription yet; will update on subscription.created.");
       } else {
         console.log("⚠️  Could not map checkout.session.completed to an email");
@@ -250,12 +274,12 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
     if (type === "customer.subscription.created" || type === "customer.subscription.updated") {
       const customerId = obj.customer;
       const db = readDB();
-      const email = Object.keys(db.users).find(e => db.users[e].stripe_customer_id === customerId) || null;
+      const email = Object.keys(db.users).find((e) => db.users[e].stripe_customer_id === customerId) || null;
       if (email) {
-        updateUser(email, {
+        await updateUser(email, {
           is_premium: statusIsPremium(obj.status),
           current_period_end: new Date(obj.current_period_end * 1000).toISOString(),
-          stripe_subscription_id: obj.id
+          stripe_subscription_id: obj.id,
         });
       } else {
         console.log("⚠️  Could not map subscription.* to an email");
@@ -265,12 +289,12 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
     if (type === "customer.subscription.deleted") {
       const customerId = obj.customer;
       const db = readDB();
-      const email = Object.keys(db.users).find(e => db.users[e].stripe_customer_id === customerId) || null;
+      const email = Object.keys(db.users).find((e) => db.users[e].stripe_customer_id === customerId) || null;
       if (email) {
-        updateUser(email, {
+        await updateUser(email, {
           is_premium: false,
           current_period_end: null,
-          stripe_subscription_id: null
+          stripe_subscription_id: null,
         });
       } else {
         console.log("⚠️  Could not map subscription.deleted to an email");
@@ -280,10 +304,10 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
     if (type === "invoice.payment_failed") {
       const customerId = obj.customer;
       const db = readDB();
-      const email = Object.keys(db.users).find(e => db.users[e].stripe_customer_id === customerId) || null;
+      const email = Object.keys(db.users).find((e) => db.users[e].stripe_customer_id === customerId) || null;
       if (email) {
         const until = new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString();
-        updateUser(email, { grace_until: until });
+        await updateUser(email, { grace_until: until });
         console.log("Grace period set until", until, "for", email);
       }
     }
@@ -295,7 +319,7 @@ app.post("/webhook", express.raw({ type: "application/json" }), async (req, res)
   res.json({ received: true });
 });
 
-// --- Simple status for dashboard (Stripe-backed; no db.json dependency) ---
+// --- Status (Stripe-backed) ---
 app.get("/status", async (req, res) => {
   try {
     const email = req.query.email;
@@ -344,7 +368,7 @@ app.get("/status", async (req, res) => {
   }
 });
 
-// --- confirm-session (webhook fallback; optional but handy) ---
+// --- confirm-session (fallback after success page) ---
 app.post("/confirm-session", async (req, res) => {
   try {
     const { session_id, email } = req.body || {};
@@ -370,7 +394,7 @@ app.post("/confirm-session", async (req, res) => {
 
     if (subscription) {
       const premium = new Set(["active", "trialing", "past_due"]).has(subscription.status);
-      updateUser(email, {
+      await updateUser(email, {
         stripe_customer_id: customerId,
         stripe_subscription_id: subscription.id,
         is_premium: premium,
@@ -384,7 +408,7 @@ app.post("/confirm-session", async (req, res) => {
       return res.json({ ok: true, premium, subscription_id: subscription.id, status: subscription.status });
     }
 
-    updateUser(email, { stripe_customer_id: customerId });
+    await updateUser(email, { stripe_customer_id: customerId });
     console.log("⚠ confirm-session: no subscription yet; saved customer only");
     return res.json({ ok: true, premium: false, subscription_id: null, status: "pending" });
   } catch (e) {
@@ -393,9 +417,10 @@ app.post("/confirm-session", async (req, res) => {
   }
 });
 
-// --- Start server (Render uses assigned port) ---
+// --- Start ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`iseehalo web running at ${process.env.BASE_URL || `http://localhost:${PORT}`}`);
   if (!fs.existsSync(DB_PATH)) writeDB({ users: {} });
+  console.log(`iseehalo web running at ${process.env.BASE_URL || `http://localhost:${PORT}`}`);
 });
+

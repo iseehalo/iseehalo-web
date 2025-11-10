@@ -4,6 +4,10 @@
     <meta charset="utf-8" />
     <title>iseehalo Premium — Upgrade</title>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Supabase client -->
+    <script type="module" src="/js/supabaseClient.js"></script>
+
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
     <style>
       body {
@@ -32,10 +36,10 @@
       button {
         background: linear-gradient(90deg, #FFD700, #ffcc33);
         color: #000; font-weight: 600; border: none; border-radius: 10px;
-        font-size: 1rem; padding: 0.8rem 1.5rem; cursor: pointer; width: 100%;
+        font-size: 1rem; padding: 0.8rem 1.5rem; cursor:pointer; width: 100%;
         transition: transform 0.2s ease, box-shadow 0.2s ease;
       }
-      button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255, 215, 0, 0.3); }
+      button:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255,215,0,0.3); }
       a { color: #FFF59E; text-decoration: none; display: block; margin-top: 1.5rem; font-size: 0.95rem; }
       a:hover { text-decoration: underline; }
       footer { margin-top: 3rem; font-size: 0.8rem; color: #777; }
@@ -51,7 +55,7 @@
     </header>
 
     <form id="subscriptionForm">
-      <input id="email" type="email" placeholder="Enter your email for receipt & account" required />
+      <input id="email" type="email" placeholder="Enter your email" required readonly />
       <button type="button" id="subscribeMonthly">Subscribe — $11.99 / month</button>
     </form>
 
@@ -61,22 +65,43 @@
       <p>© 2025 <span class="isee">isee</span><span class="halo">halo</span> • All rights reserved</p>
     </footer>
 
-    <script>
+    <!-- Require sign-in before subscribing -->
+    <script type="module">
+      const emailInput = document.getElementById("email");
+      const btn = document.getElementById("subscribeMonthly");
       const BASE_URL = window.location.origin;
 
-      document.getElementById("subscribeMonthly").addEventListener("click", async () => {
-        const email = (document.getElementById("email").value || "").trim();
-        if (!email) return alert("Please enter a valid email.");
+      async function checkAuth() {
+        try {
+          const { data } = await window.supabase.auth.getUser();
+          const user = data?.user;
+
+          if (!user) {
+            // Not logged in — require account
+            window.location.href = "/auth.html";
+            return;
+          }
+
+          // Prefill their email (read-only)
+          emailInput.value = user.email || "";
+        } catch (err) {
+          console.error("Auth check error:", err);
+          alert("Authentication failed. Please sign in again.");
+          window.location.href = "/auth.html";
+        }
+      }
+
+      await checkAuth();
+
+      btn.addEventListener("click", async () => {
+        const email = emailInput.value.trim();
+        if (!email) return alert("Invalid email. Please sign in again.");
 
         try {
           const res = await fetch(`${BASE_URL}/create-checkout-session`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            // OPTION A (recommended): rely on server env STRIPE_PRICE_ID
             body: JSON.stringify({ email })
-
-            // OPTION B (hardcode a LIVE price id — uncomment and replace):
-            // body: JSON.stringify({ email, priceId: "price_live_XXXXXXXXXXXX" })
           });
 
           const data = await res.json();
@@ -85,6 +110,7 @@
             alert(data.error || "Unable to start checkout session.");
             return;
           }
+
           if (data.url) {
             window.location.href = data.url;
           } else {
@@ -96,5 +122,6 @@
         }
       });
     </script>
+
   </body>
 </html>

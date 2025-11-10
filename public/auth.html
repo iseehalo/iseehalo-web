@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>iseehalo — Sign in / Sign up</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --halo:#FFF59E; --accent:#1DB954; }
+    body { font-family:Poppins,system-ui,-apple-system,Segoe UI,Roboto,Arial; background:#000; color:#fff;
+           display:flex; min-height:100vh; align-items:center; justify-content:center; margin:0; }
+    .card { width:100%; max-width:420px; background:#0f0f0f; border-radius:16px; padding:20px; box-shadow:0 8px 24px rgba(0,0,0,.35);}
+    .brand { font-weight:700; font-size:28px; text-align:center; margin-bottom:6px; }
+    .isee{color:#fff;} .halo{color:var(--halo);}
+    .sub { color:#aaa; text-align:center; margin:0 0 18px; font-size:14px; }
+    label { display:block; font-size:13px; color:#bbb; margin:12px 0 6px; }
+    input { width:100%; padding:12px 14px; border-radius:12px; border:1px solid #222; background:#121212; color:#fff; outline:none; }
+    input:focus{ border-color:#333; }
+    .btn { width:100%; display:inline-block; text-align:center; padding:12px 14px; border-radius:12px; border:0; cursor:pointer;
+           background:linear-gradient(90deg,#FFD700,#ffcc33); color:#000; font-weight:600; margin-top:12px; }
+    .link { color:var(--accent); text-decoration:none; font-weight:600; }
+    .muted { color:#9a9a9a; font-size:13px; }
+    .row { display:flex; gap:10px; }
+    .row .btn { flex:1; }
+    .msg { margin-top:10px; font-size:13px; color:#ddd; }
+    .success{color:#8ef18e;} .error{color:#ff7a7a;}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand"><span class="isee">isee</span><span class="halo">halo</span></div>
+    <p class="sub">Sign in to continue, or create an account to get started.</p>
+
+    <label for="email">Email</label>
+    <input id="email" type="email" placeholder="you@example.com" autocomplete="email" />
+
+    <label for="password">Password</label>
+    <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" />
+
+    <button class="btn" id="btnSignIn">Sign In</button>
+
+    <div class="row">
+      <button class="btn" id="btnSignUp" title="Sends a verification email">Create Account</button>
+      <button class="btn" id="btnForgot" title="Sends a reset email">Forgot Password</button>
+    </div>
+
+    <p class="msg" id="msg"></p>
+
+    <p class="muted" style="margin-top:18px;text-align:center;">
+      After signing in, go to your <a class="link" href="/dashboard">dashboard</a>.
+    </p>
+  </div>
+
+  <!-- Supabase client (global window.supabase) -->
+  <script type="module" src="/js/supabaseClient.js"></script>
+
+  <script type="module">
+    const $ = (id) => document.getElementById(id);
+    const msg = $("msg");
+    const emailEl = $("email");
+    const passEl = $("password");
+    const origin = window.location.origin;
+
+    function show(text, kind="") {
+      msg.textContent = text;
+      msg.className = `msg ${kind}`;
+    }
+
+    // Sign in
+    $("btnSignIn").addEventListener("click", async () => {
+      const email = emailEl.value.trim();
+      const password = passEl.value;
+      if (!email || !password) return show("Please enter email and password.","error");
+      show("Signing in…");
+
+      const { error } = await window.supabase.auth.signInWithPassword({ email, password });
+      if (error) return show(error.message, "error");
+
+      show("Signed in! Redirecting…","success");
+      window.location.href = "/dashboard";
+    });
+
+    // Sign up (email verification)
+    $("btnSignUp").addEventListener("click", async () => {
+      const email = emailEl.value.trim();
+      const password = passEl.value;
+      if (!email || !password) return show("Enter email and a password to create your account.","error");
+      show("Creating account…");
+
+      const { data, error } = await window.supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          // After the user clicks the verification link, send them back here
+          emailRedirectTo: `${origin}/auth.html?verified=1`
+        }
+      });
+
+      if (error) return show(error.message, "error");
+      if (data?.user) {
+        show(`We sent a verification link to ${email}. Please verify, then sign in.`, "success");
+        passEl.value = "";
+      } else {
+        show("Check your email to verify your account.", "success");
+      }
+    });
+
+    // Forgot password (reset email)
+  $("btnForgot").addEventListener("click", async () => {
+  const email = emailEl.value.trim();
+  if (!email) return show("Type the email you used for your account first.", "error");
+  show("Sending reset email…");
+
+  const { error } = await window.supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/reset.html`
+  });
+
+  if (error) return show(error.message, "error");
+  show("Password reset email sent. Check your inbox.", "success");
+});
+
+
+    // If user returns after verifying email, show a friendly nudge
+    const url = new URL(location.href);
+    if (url.searchParams.get("verified") === "1") {
+      show("Email verified. You can now sign in.","success");
+    }
+  </script>
+</body>
+</html>

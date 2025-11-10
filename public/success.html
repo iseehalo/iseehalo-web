@@ -1,9 +1,10 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <title>Success — Iseehalo Premium</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
       --isee: #ffffff;
@@ -11,7 +12,6 @@
       --bg: #111;
       --text: #f5f5f5;
     }
-
     body {
       font-family: "Poppins", sans-serif;
       background: var(--bg);
@@ -25,58 +25,30 @@
       margin: 0;
       padding: 1rem;
     }
-
-    h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-    }
-
-    h1 span.halo {
-      color: var(--halo);
-    }
-
-    p {
-      margin: 0.5rem 0;
-      line-height: 1.5;
-      max-width: 400px;
-    }
-
-    #status {
-      margin-top: 1rem;
-      font-size: 1rem;
-      color: var(--halo);
-      font-weight: 500;
-    }
-
+    h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+    h1 .halo { color: var(--halo); }
+    p { margin: 0.5rem 0; line-height: 1.5; max-width: 420px; }
+    #status { margin-top: 1rem; font-size: 1rem; color: var(--halo); font-weight: 600; }
     a, button {
       background: var(--halo);
       color: #000;
       border: none;
-      border-radius: 6px;
-      padding: 0.6rem 1rem;
-      font-weight: 600;
+      border-radius: 8px;
+      padding: 0.7rem 1.1rem;
+      font-weight: 700;
       cursor: pointer;
       text-decoration: none;
       margin-top: 1.2rem;
-      transition: 0.3s;
+      transition: 0.2s ease;
     }
-
-    a:hover, button:hover {
-      opacity: 0.8;
-    }
-
-    footer {
-      margin-top: 2rem;
-      font-size: 0.8rem;
-      opacity: 0.6;
-    }
+    a:hover, button:hover { opacity: 0.9; transform: translateY(-1px); }
+    footer { margin-top: 2rem; font-size: 0.8rem; opacity: 0.6; }
   </style>
 </head>
 <body>
   <h1><span class="isee">Isee</span><span class="halo">halo</span> Premium 🎉</h1>
   <p>Thank you for subscribing! We’re activating your premium access.</p>
-  <p id="status">Checking status...</p>
+  <p id="status">Checking status…</p>
 
   <button id="dashboardBtn">Go to Dashboard</button>
   <a href="/">Back to Home</a>
@@ -89,36 +61,45 @@
     const email = params.get("email");
     const BASE_URL = window.location.origin;
 
-    async function confirmNow() {
-      if (!session_id || !email) return;
+    // Save the email so dashboard can prefill it.
+    if (email) try { localStorage.setItem("iseehaloEmail", email); } catch {}
 
-      try {
-        const r = await fetch(`${BASE_URL}/confirm-session`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ session_id, email }),
-        });
-        const data = await r.json();
-        console.log("confirm-session:", data);
+    async function confirmOnce() {
+      if (!session_id || !email) return { ok: false, reason: "missing params" };
+      const res = await fetch(`${BASE_URL}/confirm-session`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id, email }),
+      });
+      const data = await res.json().catch(() => ({}));
+      return { ok: res.ok && !!data.ok, data };
+    }
 
-        const el = document.getElementById("status");
-        if (data.ok && data.premium) {
-          el.textContent = "✨ Premium is active! Enjoy ad-free listening.";
-        } else {
-          el.textContent = "⏳ Still verifying… try refreshing in a few seconds.";
+    async function pollConfirm(maxTries = 6, delayMs = 4000) {
+      const statusEl = document.getElementById("status");
+      for (let i = 1; i <= maxTries; i++) {
+        try {
+          const { ok, data } = await confirmOnce();
+          if (ok && data?.premium) {
+            statusEl.textContent = "✨ Premium is active! Enjoy ad-free listening.";
+            return true;
+          }
+          statusEl.textContent = `⏳ Verifying… (attempt ${i}/${maxTries})`;
+        } catch (e) {
+          statusEl.textContent = "Temporary issue verifying. Retrying…";
         }
-      } catch (err) {
-        console.error(err);
-        document.getElementById("status").textContent = "Error verifying your subscription.";
+        await new Promise(r => setTimeout(r, delayMs));
       }
+      statusEl.textContent = "Still verifying… You can refresh this page in a few seconds.";
+      return false;
     }
 
     document.getElementById("dashboardBtn").addEventListener("click", () => {
       window.location.href = `${BASE_URL}/dashboard`;
     });
 
-    confirmNow();
+    // Kick off polling immediately
+    pollConfirm();
   </script>
 </body>
 </html>
-

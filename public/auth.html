@@ -51,6 +51,13 @@
     </p>
   </div>
 
+  
+  <!-- 1️⃣ Load Supabase UMD library -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+  <!-- 2️⃣ Initialize the global client -->
+  <script type="module" src="/js/supabaseClient.js"></script>
+  
   <!-- Supabase client (global window.supabase) -->
   <script type="module">
   const $ = (id) => document.getElementById(id);
@@ -173,6 +180,5 @@
     show("Email verified. You can now sign in.", "success");
   }
 </script>
-
 </body>
 </html>

@@ -49,6 +49,9 @@
     <p class="muted">Manage your plan in your <a class="link" href="/dashboard">dashboard</a>.</p>
   </div>
 
+  <!-- Load Supabase UMD library (must come before supabaseClient.js) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
   <!-- Load Supabase client AFTER HTML so elements exist -->
   <script type="module" src="/js/supabaseClient.js"></script>
   <script type="module">

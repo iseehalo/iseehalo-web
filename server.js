@@ -2,10 +2,10 @@
 // package.json:  "type": "module"
 // deps: express, stripe, dotenv, cors, @supabase/supabase-js
 
+import express from "express";
 import dotenv from "dotenv";
 dotenv.config(); // ✅ load env BEFORE using process.env anywhere
 
-import express from "express";
 import Stripe from "stripe";
 import cors from "cors";
 import fs from "fs";

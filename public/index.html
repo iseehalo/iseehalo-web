@@ -215,7 +215,8 @@
           <span class="isee">isee</span><span class="halo">halo</span>
         </div>
         <p class="tagline">
-          The <span class="highlight">music marketplace</span> where fans and artists share the upside.
+          The <span class="highlight">music marketplace</span> where fans and
+          artists share the upside.
         </p>
         <ul class="bullets">
           <li>Own limited copies of tracks you love.</li>
@@ -234,9 +235,6 @@
         <p style="margin-top:0;font-size:13px;color:#bbbbbb;">
           Spots are rolling out gradually. Save your place now.
         </p>
-
-        <label for="fullName">Name</label>
-        <input id="fullName" type="text" placeholder="Your name" />
 
         <label for="email">Email</label>
         <input
@@ -262,7 +260,6 @@
       const $ = (id) => document.getElementById(id);
       const msg = $("msg");
       const btn = $("joinBtn");
-      const nameEl = $("fullName");
       const emailEl = $("email");
       const posBox = $("positionBox");
       const listBox = $("listBox");
@@ -276,16 +273,19 @@
         btn.disabled = yes;
       };
 
-      // Helper: upsert + fetch queue
-      async function joinWaitlist(fullName, email) {
+      // Guard: make sure Supabase loaded
+      if (!window.supabase) {
+        console.error("Supabase client did not load");
+        showMessage("Internal error: waitlist backend not available.", "error");
+      }
+
+      // Upsert + fetch queue (email only)
+      async function joinWaitlist(email) {
         // 1) Upsert into waitlist (by email)
         const { error: upsertErr } = await window.supabase
           .from("waitlist")
           .upsert(
-            {
-              email,
-              full_name: fullName || null,
-            },
+            { email },          // only email now
             { onConflict: "email" }
           );
 
@@ -328,25 +328,33 @@
           `;
         }
 
-        // People ahead of you (or top N)
+        // People ahead (or top N)
         listBox.style.display = "block";
         listBox.innerHTML = "";
 
-        const maxShow = 15; // limit visible list
+        const maxShow = 15;
         queue.slice(0, maxShow).forEach((row, i) => {
           const div = document.createElement("div");
           div.className = "waitlist-item";
-          const isYou = row.email === email;
+
+          // Use obfuscated email as “name”
           const displayName =
-            row.full_name?.trim() ||
+            (row.full_name && row.full_name.trim()) ||
             row.email.split("@")[0].replace(/./g, (c, j) =>
               j === 0 ? c : "*"
             );
 
+          const isYou = row.email === email;
+
           div.innerHTML = `
-            <span><span class="idx">#${i + 1}</span> ${
-            isYou ? `<span class="you">${displayName} (you)</span>` : displayName
-          }</span>
+            <span>
+              <span class="idx">#${i + 1}</span>
+              ${
+                isYou
+                  ? `<span class="you">${displayName} (you)</span>`
+                  : displayName
+              }
+            </span>
             <span>${new Date(row.created_at).toLocaleDateString()}</span>
           `;
           listBox.appendChild(div);
@@ -363,18 +371,24 @@
       }
 
       btn.addEventListener("click", async () => {
-        const fullName = nameEl.value.trim();
         const email = emailEl.value.trim().toLowerCase();
 
         if (!email || !email.includes("@")) {
           return showMessage("Please enter a valid email.", "error");
         }
 
+        if (!window.supabase) {
+          return showMessage(
+            "Backend not ready. Try again in a moment.",
+            "error"
+          );
+        }
+
         setBusy(true);
         showMessage("Adding you to the waitlist…");
 
         try {
-          const queue = await joinWaitlist(fullName, email);
+          const queue = await joinWaitlist(email);
           showMessage("You're on the list! 🎉", "success");
           renderQueue(queue, email);
         } catch (err) {

@@ -254,10 +254,10 @@
       </div>
     </div>
 
-    <!-- Supabase UMD + client -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-    <script src="/js/supabaseClient.js"></script>
+    <!-- 1️⃣ Supabase client (ESM, exposes window.supabase) -->
+    <script type="module" src="/js/supabaseClient.js"></script>
 
+    <!-- 2️⃣ Waitlist logic (ESM) -->
     <script type="module">
       const $ = (id) => document.getElementById(id);
       const msg = $("msg");
@@ -275,52 +275,8 @@
         btn.disabled = yes;
       };
 
-      if (!window.supabase) {
-        showMessage("Internal error: waitlist backend not available.", "error");
-      }
-
-      // Fetch the full queue ordered by created_at
-      async function fetchQueue() {
-        const { data, error } = await window.supabase
-          .from("waitlist")
-          .select("email, created_at")
-          .order("created_at", { ascending: true });
-
-        if (error) throw error;
-        return data || [];
-      }
-
-      // Join waitlist with duplicate detection
-      async function joinWaitlist(email) {
-        // 1) Check if this email is already on the list
-        const { data: existing, error: existingErr } = await window.supabase
-          .from("waitlist")
-          .select("email, created_at")
-          .eq("email", email)
-          .maybeSingle();
-
-        if (existingErr) throw existingErr;
-
-        if (existing) {
-          // Already in queue – just fetch queue for position display
-          const queue = await fetchQueue();
-          return { already: true, queue };
-        }
-
-        // 2) Insert new entry
-        const { error: insertErr } = await window.supabase
-          .from("waitlist")
-          .insert({ email });
-
-        if (insertErr) throw insertErr;
-
-        // 3) Fetch queue
-        const queue = await fetchQueue();
-        return { already: false, queue };
-      }
-
       function renderQueue(queue, email) {
-        if (!queue.length) {
+        if (!queue || !queue.length) {
           posBox.style.display = "none";
           listBox.style.display = "none";
           return;
@@ -354,17 +310,18 @@
           div.className = "waitlist-item";
           const isYou = row.email === email;
 
-          const displayName = row.email
-            .split("@")[0]
-            .replace(/./g, (c, j) => (j === 0 ? c : "*"));
+          const masked =
+            row.email.split("@")[0].replace(/./g, (c, j) =>
+              j === 0 ? c : "*"
+            ) + "@" + row.email.split("@")[1];
 
           div.innerHTML = `
             <span>
               <span class="idx">#${i + 1}</span>
               ${
                 isYou
-                  ? `<span class="you">${displayName} (you)</span>`
-                  : displayName
+                  ? `<span class="you">${masked} (you)</span>`
+                  : masked
               }
             </span>
             <span>${new Date(row.created_at).toLocaleDateString()}</span>
@@ -389,7 +346,9 @@
           return showMessage("Please enter a valid email.", "error");
         }
 
-        if (!window.supabase) {
+        const supabaseClient = window.supabase;
+        if (!supabaseClient) {
+          console.error("Supabase client not initialized.");
           return showMessage(
             "Internal error: waitlist backend not available.",
             "error"
@@ -400,34 +359,32 @@
         showMessage("Adding you to the waitlist…");
 
         try {
-          const result = await joinWaitlist(email);
-
-          if (result.already) {
-            showMessage(
-              "You're already on the waitlist! 🎉 Here's your position:",
-              "success"
+          // Upsert by email (no duplicates)
+          const { error: upsertErr } = await supabaseClient
+            .from("waitlist")
+            .upsert(
+              {
+                email,
+                full_name: null, // we’re not collecting names here
+              },
+              { onConflict: "email" }
             );
-          } else {
-            showMessage("You're on the list! 🎉", "success");
-          }
 
-          renderQueue(result.queue, email);
+          if (upsertErr) throw upsertErr;
+
+          // Fetch full queue ordered by created_at
+          const { data, error } = await supabaseClient
+            .from("waitlist")
+            .select("email, created_at")
+            .order("created_at", { ascending: true });
+
+          if (error) throw error;
+
+          showMessage("You're on the list! 🎉", "success");
+          renderQueue(data, email);
         } catch (err) {
           console.error(err);
-          const msgText = (err.message || "").toLowerCase();
-          if (msgText.includes("relation") && msgText.includes("waitlist")) {
-            showMessage(
-              "Internal error: waitlist backend not available.",
-              "error"
-            );
-          } else if (msgText.includes("permission")) {
-            showMessage(
-              "Permission error: check RLS policies for table `waitlist`.",
-              "error"
-            );
-          } else {
-            showMessage(err.message || "Could not join waitlist.", "error");
-          }
+          showMessage(err.message || "Could not join waitlist.", "error");
         } finally {
           setBusy(false);
         }
@@ -435,4 +392,3 @@
     </script>
   </body>
 </html>
-

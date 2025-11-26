@@ -254,15 +254,11 @@
       </div>
     </div>
 
-    <!-- Supabase client -->
-    <script type="module" src="/js/supabaseClient.js"></script>
-      //<!-- Waitlist logic -->
+    <!-- Supabase UMD + client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+    <script src="/js/supabaseClient.js"></script>
+
     <script type="module">
-      if (!window.supabase) {
-        console.error("Supabase client not loaded");
-        showMessage("Internal error: waitlist backend not available.", "error");
-      }
-      
       const $ = (id) => document.getElementById(id);
       const msg = $("msg");
       const btn = $("joinBtn");
@@ -279,32 +275,48 @@
         btn.disabled = yes;
       };
 
-      // Guard: make sure Supabase loaded
       if (!window.supabase) {
-        console.error("Supabase client did not load");
         showMessage("Internal error: waitlist backend not available.", "error");
       }
 
-      // Upsert + fetch queue (email only)
-      async function joinWaitlist(email) {
-        // 1) Upsert into waitlist (by email)
-        const { error: upsertErr } = await window.supabase
-          .from("waitlist")
-          .upsert(
-            { email },          // only email now
-            { onConflict: "email" }
-          );
-
-        if (upsertErr) throw upsertErr;
-
-        // 2) Fetch everyone ordered by created_at
+      // Fetch the full queue ordered by created_at
+      async function fetchQueue() {
         const { data, error } = await window.supabase
           .from("waitlist")
-          .select("email, full_name, created_at")
+          .select("email, created_at")
           .order("created_at", { ascending: true });
 
         if (error) throw error;
         return data || [];
+      }
+
+      // Join waitlist with duplicate detection
+      async function joinWaitlist(email) {
+        // 1) Check if this email is already on the list
+        const { data: existing, error: existingErr } = await window.supabase
+          .from("waitlist")
+          .select("email, created_at")
+          .eq("email", email)
+          .maybeSingle();
+
+        if (existingErr) throw existingErr;
+
+        if (existing) {
+          // Already in queue – just fetch queue for position display
+          const queue = await fetchQueue();
+          return { already: true, queue };
+        }
+
+        // 2) Insert new entry
+        const { error: insertErr } = await window.supabase
+          .from("waitlist")
+          .insert({ email });
+
+        if (insertErr) throw insertErr;
+
+        // 3) Fetch queue
+        const queue = await fetchQueue();
+        return { already: false, queue };
       }
 
       function renderQueue(queue, email) {
@@ -314,7 +326,6 @@
           return;
         }
 
-        // Find current user's index
         const idx = queue.findIndex((row) => row.email === email);
         const yourPos = idx === -1 ? null : idx + 1;
 
@@ -334,7 +345,6 @@
           `;
         }
 
-        // People ahead (or top N)
         listBox.style.display = "block";
         listBox.innerHTML = "";
 
@@ -342,15 +352,11 @@
         queue.slice(0, maxShow).forEach((row, i) => {
           const div = document.createElement("div");
           div.className = "waitlist-item";
-
-          // Use obfuscated email as “name”
-          const displayName =
-            (row.full_name && row.full_name.trim()) ||
-            row.email.split("@")[0].replace(/./g, (c, j) =>
-              j === 0 ? c : "*"
-            );
-
           const isYou = row.email === email;
+
+          const displayName = row.email
+            .split("@")[0]
+            .replace(/./g, (c, j) => (j === 0 ? c : "*"));
 
           div.innerHTML = `
             <span>
@@ -385,7 +391,7 @@
 
         if (!window.supabase) {
           return showMessage(
-            "Backend not ready. Try again in a moment.",
+            "Internal error: waitlist backend not available.",
             "error"
           );
         }
@@ -394,12 +400,34 @@
         showMessage("Adding you to the waitlist…");
 
         try {
-          const queue = await joinWaitlist(email);
-          showMessage("You're on the list! 🎉", "success");
-          renderQueue(queue, email);
+          const result = await joinWaitlist(email);
+
+          if (result.already) {
+            showMessage(
+              "You're already on the waitlist! 🎉 Here's your position:",
+              "success"
+            );
+          } else {
+            showMessage("You're on the list! 🎉", "success");
+          }
+
+          renderQueue(result.queue, email);
         } catch (err) {
           console.error(err);
-          showMessage(err.message || "Could not join waitlist.", "error");
+          const msgText = (err.message || "").toLowerCase();
+          if (msgText.includes("relation") && msgText.includes("waitlist")) {
+            showMessage(
+              "Internal error: waitlist backend not available.",
+              "error"
+            );
+          } else if (msgText.includes("permission")) {
+            showMessage(
+              "Permission error: check RLS policies for table `waitlist`.",
+              "error"
+            );
+          } else {
+            showMessage(err.message || "Could not join waitlist.", "error");
+          }
         } finally {
           setBusy(false);
         }
@@ -407,3 +435,4 @@
     </script>
   </body>
 </html>
+

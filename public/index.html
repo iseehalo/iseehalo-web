@@ -256,7 +256,13 @@
 
     <!-- Supabase client -->
     <script type="module" src="/js/supabaseClient.js"></script>
+      //<!-- Waitlist logic -->
     <script type="module">
+      if (!window.supabase) {
+        console.error("Supabase client not loaded");
+        showMessage("Internal error: waitlist backend not available.", "error");
+      }
+      
       const $ = (id) => document.getElementById(id);
       const msg = $("msg");
       const btn = $("joinBtn");

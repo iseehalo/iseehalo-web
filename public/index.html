@@ -1,394 +1,147 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>iseehalo — Waitlist</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      :root {
-        --halo: #fff59e;
-        --accent: #1db954;
-        --bg: #000;
-        --card: #0f0f0f;
-        --text: #ffffff;
-        --muted: #aaaaaa;
-      }
+<head>
+  <meta charset="utf-8" />
+  <title>iseehalo Premium — Upgrade</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: #000; color: #fff; margin: 0;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    }
+    .wrap { width: 100%; max-width: 480px; background:#0f0f0f; border-radius:16px; padding:24px; box-shadow:0 8px 24px rgba(0,0,0,.35); }
+    .brand { font-size: 28px; font-weight:700; text-align:center; margin-bottom:6px; }
+    .brand .isee { color:#fff; } .brand .halo { color:#FFF59E; }
+    .sub { color:#aaa; text-align:center; margin:0 0 18px; font-size:14px; }
+    .row { display:flex; gap:10px; align-items:center; justify-content:center; margin: 12px 0; }
+    .btn {
+      width:100%; display:inline-block; text-align:center; padding:12px 14px; border-radius:12px; border:0; cursor:pointer;
+      background:linear-gradient(90deg,#FFD700,#ffcc33); color:#000; font-weight:600; margin-top:12px;
+    }
+    .link { color:#1DB954; text-decoration:none; font-weight:600; }
+    .muted { color:#9a9a9a; font-size:13px; text-align:center; }
+    .status { font-size:13px; color:#ddd; text-align:center; margin-top:8px; min-height: 18px; }
+    .tiny { font-size: 12px; color:#888; text-align:center; margin-top:6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand"><span class="isee">isee</span><span class="halo">halo</span></div>
+    <p class="sub">Unlock ad-free listening, offline access, and exclusive music experiences.</p>
 
-      * {
-        box-sizing: border-box;
-      }
+    <!-- Sign-in / account actions -->
+    <div class="row" id="authedRow" style="display:none;">
+      <span id="whoami" class="tiny"></span>
+      <a class="link" id="signOut" href="#">Sign out</a>
+    </div>
+    <div class="row" id="anonRow" style="justify-content:space-between;">
+      <a class="link" href="/auth.html">Sign in</a>
+      <span class="tiny">or</span>
+      <a class="link" href="/auth.html">Create account</a>
+    </div>
 
-      body {
-        font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto,
-          Arial, sans-serif;
-        margin: 0;
-        min-height: 100vh;
-        background: radial-gradient(circle at top, #222 0, #000 45%);
-        color: var(--text);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 16px;
-      }
+    <!-- Subscribe button -->
+    <button class="btn" id="subscribeMonthly">Subscribe — $11.99 / month</button>
 
-      .container {
-        width: 100%;
-        max-width: 900px;
-        display: grid;
-        grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-        gap: 24px;
-        align-items: stretch;
-      }
+    <p id="status" class="status"></p>
+    <p class="muted">Manage your plan in your
+      <a class="link" href="/dashboard">dashboard</a>.
+    </p>
 
-      @media (max-width: 780px) {
-        .container {
-          grid-template-columns: 1fr;
+    <!-- Optional: link to music web app -->
+    <p class="muted" style="margin-top: 6px;">
+      Already premium? <a class="link" href="/app.html">Launch web app</a>
+    </p>
+  </div>
+
+  <!-- Supabase CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+  <!-- Your Supabase client -->
+  <script type="module" src="/js/supabaseClient.js"></script>
+
+  <script type="module">
+    document.addEventListener('DOMContentLoaded', () => {
+      const statusEl = document.getElementById('status');
+      const subscribeBtn = document.getElementById('subscribeMonthly');
+      const authedRow = document.getElementById('authedRow');
+      const anonRow = document.getElementById('anonRow');
+      const whoami = document.getElementById('whoami');
+      const signOut = document.getElementById('signOut');
+      const BASE_URL = window.location.origin;
+
+      const show = (text) => { statusEl.textContent = text || ''; };
+
+      async function refreshAuthUI() {
+        const { data, error } = await window.supabase.auth.getSession();
+        if (error) {
+          console.error(error);
+          authedRow.style.display = 'none';
+          anonRow.style.display = 'flex';
+          whoami.textContent = '';
+          return;
+        }
+        const session = data?.session || null;
+        if (session) {
+          authedRow.style.display = 'flex';
+          anonRow.style.display = 'none';
+          whoami.textContent = `Signed in as ${session.user.email}`;
+        } else {
+          authedRow.style.display = 'none';
+          anonRow.style.display = 'flex';
+          whoami.textContent = '';
         }
       }
 
-      .hero {
-        padding: 24px 20px;
-      }
+      subscribeBtn.addEventListener('click', async () => {
+        show('Checking your session…');
+        const { data } = await window.supabase.auth.getSession();
+        const session = data?.session || null;
 
-      .brand {
-        font-size: 32px;
-        font-weight: 700;
-        letter-spacing: -0.5px;
-        margin-bottom: 8px;
-      }
-
-      .isee {
-        color: #fff;
-      }
-
-      .halo {
-        color: var(--halo);
-      }
-
-      .tagline {
-        font-size: 18px;
-        color: var(--muted);
-        margin-bottom: 16px;
-      }
-
-      .highlight {
-        color: var(--accent);
-        font-weight: 600;
-      }
-
-      .bullets {
-        list-style: none;
-        padding-left: 0;
-        margin: 0 0 20px;
-        color: var(--muted);
-        font-size: 14px;
-      }
-
-      .bullets li::before {
-        content: "• ";
-        color: var(--halo);
-      }
-
-      .small-note {
-        font-size: 13px;
-        color: var(--muted);
-      }
-
-      .card {
-        background: var(--card);
-        border-radius: 16px;
-        padding: 20px 18px;
-        box-shadow: 0 14px 40px rgba(0, 0, 0, 0.5);
-      }
-
-      h2 {
-        margin-top: 0;
-        font-size: 20px;
-        margin-bottom: 8px;
-      }
-
-      label {
-        display: block;
-        font-size: 13px;
-        color: #c5c5c5;
-        margin: 10px 0 5px;
-      }
-
-      input {
-        width: 100%;
-        padding: 11px 12px;
-        border-radius: 10px;
-        border: 1px solid #222;
-        background: #121212;
-        color: #fff;
-        outline: none;
-        font-size: 14px;
-      }
-
-      input:focus {
-        border-color: #343434;
-      }
-
-      button {
-        width: 100%;
-        margin-top: 14px;
-        padding: 11px 12px;
-        border-radius: 999px;
-        border: none;
-        cursor: pointer;
-        font-weight: 600;
-        font-size: 15px;
-        background: linear-gradient(90deg, #ffd700, #ffcc33);
-        color: #000;
-        transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s;
-      }
-
-      button:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 6px 18px rgba(255, 215, 0, 0.35);
-      }
-
-      button:disabled {
-        opacity: 0.6;
-        cursor: default;
-        transform: none;
-        box-shadow: none;
-      }
-
-      .msg {
-        margin-top: 10px;
-        font-size: 13px;
-        min-height: 18px;
-      }
-
-      .msg.success {
-        color: #8ef18e;
-      }
-      .msg.error {
-        color: #ff7a7a;
-      }
-
-      .position-box {
-        margin-top: 10px;
-        font-size: 14px;
-        padding: 10px 12px;
-        border-radius: 10px;
-        background: rgba(255, 255, 255, 0.03);
-      }
-
-      .waitlist-list {
-        margin-top: 10px;
-        max-height: 220px;
-        overflow-y: auto;
-        font-size: 13px;
-        border-top: 1px solid #222;
-        padding-top: 8px;
-      }
-
-      .waitlist-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 4px 0;
-        color: var(--muted);
-      }
-
-      .waitlist-item span.idx {
-        color: var(--halo);
-        font-weight: 600;
-        margin-right: 6px;
-      }
-
-      .you {
-        color: var(--accent);
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <!-- Left / hero -->
-      <div class="hero">
-        <div class="brand">
-          <span class="isee">isee</span><span class="halo">halo</span>
-        </div>
-        <p class="tagline">
-          The <span class="highlight">music marketplace</span> where fans and
-          artists share the upside.
-        </p>
-        <ul class="bullets">
-          <li>Own limited copies of tracks you love.</li>
-          <li>Support artists directly and earn with them.</li>
-          <li>Early access to beta drops, events, and more.</li>
-        </ul>
-        <p class="small-note">
-          Join the waitlist and we’ll email you when your spot is ready. You’ll
-          see your position right after signing up.
-        </p>
-      </div>
-
-      <!-- Right / waitlist card -->
-      <div class="card">
-        <h2>Join the waitlist</h2>
-        <p style="margin-top:0;font-size:13px;color:#bbbbbb;">
-          Spots are rolling out gradually. Save your place now.
-        </p>
-
-        <label for="email">Email</label>
-        <input
-          id="email"
-          type="email"
-          placeholder="you@example.com"
-          autocomplete="email"
-        />
-
-        <button id="joinBtn">Join waitlist</button>
-
-        <div id="msg" class="msg"></div>
-
-        <div id="positionBox" class="position-box" style="display:none;"></div>
-
-        <div id="listBox" class="waitlist-list" style="display:none;"></div>
-      </div>
-    </div>
-
-    <!-- 1️⃣ Supabase client (ESM, exposes window.supabase) -->
-    <script type="module" src="/js/supabaseClient.js"></script>
-
-    <!-- 2️⃣ Waitlist logic (ESM) -->
-    <script type="module">
-      const $ = (id) => document.getElementById(id);
-      const msg = $("msg");
-      const btn = $("joinBtn");
-      const emailEl = $("email");
-      const posBox = $("positionBox");
-      const listBox = $("listBox");
-
-      function showMessage(text, kind = "") {
-        msg.textContent = text;
-        msg.className = "msg " + kind;
-      }
-
-      const setBusy = (yes) => {
-        btn.disabled = yes;
-      };
-
-      function renderQueue(queue, email) {
-        if (!queue || !queue.length) {
-          posBox.style.display = "none";
-          listBox.style.display = "none";
+        if (!session) {
+          show('You need to sign in to subscribe.');
+          setTimeout(() => window.location.href = '/auth.html', 1200);
           return;
         }
 
-        const idx = queue.findIndex((row) => row.email === email);
-        const yourPos = idx === -1 ? null : idx + 1;
-
-        if (yourPos) {
-          posBox.style.display = "block";
-          posBox.innerHTML = `
-            You are <strong>#${yourPos}</strong> on the waitlist
-            <br/>
-            Total people in line: <strong>${queue.length}</strong>
-          `;
-        } else {
-          posBox.style.display = "block";
-          posBox.innerHTML = `
-            You are on the waitlist.
-            <br/>
-            Total people in line: <strong>${queue.length}</strong>
-          `;
-        }
-
-        listBox.style.display = "block";
-        listBox.innerHTML = "";
-
-        const maxShow = 15;
-        queue.slice(0, maxShow).forEach((row, i) => {
-          const div = document.createElement("div");
-          div.className = "waitlist-item";
-          const isYou = row.email === email;
-
-          const masked =
-            row.email.split("@")[0].replace(/./g, (c, j) =>
-              j === 0 ? c : "*"
-            ) + "@" + row.email.split("@")[1];
-
-          div.innerHTML = `
-            <span>
-              <span class="idx">#${i + 1}</span>
-              ${
-                isYou
-                  ? `<span class="you">${masked} (you)</span>`
-                  : masked
-              }
-            </span>
-            <span>${new Date(row.created_at).toLocaleDateString()}</span>
-          `;
-          listBox.appendChild(div);
-        });
-
-        if (queue.length > maxShow) {
-          const more = document.createElement("div");
-          more.style.marginTop = "4px";
-          more.style.fontSize = "12px";
-          more.style.color = "#777";
-          more.textContent = `…and ${queue.length - maxShow} more in line.`;
-          listBox.appendChild(more);
-        }
-      }
-
-      btn.addEventListener("click", async () => {
-        const email = emailEl.value.trim().toLowerCase();
-
-        if (!email || !email.includes("@")) {
-          return showMessage("Please enter a valid email.", "error");
-        }
-
-        const supabaseClient = window.supabase;
-        if (!supabaseClient) {
-          console.error("Supabase client not initialized.");
-          return showMessage(
-            "Internal error: waitlist backend not available.",
-            "error"
-          );
-        }
-
-        setBusy(true);
-        showMessage("Adding you to the waitlist…");
-
+        show('Starting checkout…');
         try {
-          // Upsert by email (no duplicates)
-          const { error: upsertErr } = await supabaseClient
-            .from("waitlist")
-            .upsert(
-              {
-                email,
-                full_name: null, // we’re not collecting names here
-              },
-              { onConflict: "email" }
-            );
+          const email = session.user.email;
+          const res = await fetch(`${BASE_URL}/create-checkout-session`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+          const result = await res.json();
 
-          if (upsertErr) throw upsertErr;
-
-          // Fetch full queue ordered by created_at
-          const { data, error } = await supabaseClient
-            .from("waitlist")
-            .select("email, created_at")
-            .order("created_at", { ascending: true });
-
-          if (error) throw error;
-
-          showMessage("You're on the list! 🎉", "success");
-          renderQueue(data, email);
+          if (!res.ok) {
+            console.error(result);
+            show(result.error || 'Could not start checkout.');
+            return;
+          }
+          if (result.url) {
+            window.location.href = result.url;
+          } else {
+            show('No checkout URL returned.');
+          }
         } catch (err) {
           console.error(err);
-          showMessage(err.message || "Could not join waitlist.", "error");
-        } finally {
-          setBusy(false);
+          show('Network error starting checkout.');
         }
       });
-    </script>
-  </body>
+
+      signOut.addEventListener('click', async (e) => {
+        e.preventDefault();
+        await window.supabase.auth.signOut();
+        await refreshAuthUI();
+        show('Signed out.');
+      });
+
+      refreshAuthUI();
+      window.supabase.auth.onAuthStateChange(() => refreshAuthUI());
+    });
+  </script>
+</body>
 </html>

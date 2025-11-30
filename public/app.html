@@ -4,755 +4,960 @@
   <meta charset="utf-8" />
   <title>iseehalo — Web Player</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #000;
-      --bg-elevated: #181818;
-      --bg-sidebar: #000000;
-      --bg-card: #181818;
+      --bg: #050505;
+      --card: #111;
+      --card-soft: #151515;
+      --border: #222;
+      --text: #f9f9f9;
+      --muted: #a0a0a0;
       --accent: #1db954;
       --halo: #fff59e;
-      --text: #ffffff;
-      --muted: #b3b3b3;
-      --border-subtle: #282828;
+      --danger: #ff7a7a;
     }
-
     * { box-sizing: border-box; }
-
     body {
       margin: 0;
-      min-height: 100vh;
-      background: var(--bg);
-      color: var(--text);
       font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background: radial-gradient(circle at top, #1b1b1b 0, #050505 55%);
+      color: var(--text);
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
     }
 
-    /* Layout: sidebar + main + bottom player */
-    .shell {
-      flex: 1;
+    /* Layout */
+    .app-shell {
       display: grid;
-      grid-template-columns: 260px minmax(0, 1fr);
-      grid-template-rows: minmax(0, 1fr) auto;
-      grid-template-areas:
-        "sidebar main"
-        "player player";
-      height: 100vh;
+      grid-template-columns: 220px minmax(0, 1fr);
+      grid-template-rows: auto minmax(0, 1fr);
+      min-height: 100vh;
     }
-
     @media (max-width: 900px) {
-      .shell {
+      .app-shell {
         grid-template-columns: 1fr;
-        grid-template-rows: minmax(0, 1fr) auto auto;
-        grid-template-areas:
-          "main"
-          "sidebar"
-          "player";
+        grid-template-rows: auto auto minmax(0, 1fr);
       }
     }
 
-    .sidebar {
-      grid-area: sidebar;
-      background: var(--bg-sidebar);
-      padding: 16px 16px 80px;
-      border-right: 1px solid var(--border-subtle);
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-    }
-
-    .brand {
-      font-size: 24px;
-      font-weight: 700;
-      letter-spacing: -0.3px;
-    }
-    .isee { color: #fff; }
-    .halo { color: var(--halo); }
-
-    .nav {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      font-size: 14px;
-    }
-
-    .nav-item {
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      color: var(--muted);
-      cursor: pointer;
-      padding: 8px 10px;
-      border-radius: 8px;
-      transition: background 0.15s ease, color 0.15s ease;
-    }
-
-    .nav-item.active,
-    .nav-item:hover {
-      background: #181818;
-      color: #fff;
-    }
-
-    .nav-item span.icon {
-      font-size: 16px;
-    }
-
-    .sidebar-foot {
-      margin-top: auto;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .sidebar-foot a {
-      color: var(--muted);
-      text-decoration: none;
-    }
-    .sidebar-foot a:hover {
-      text-decoration: underline;
-    }
-
-    .main {
-      grid-area: main;
-      background: radial-gradient(circle at top, #222 0, #000 45%);
-      padding: 18px 22px 110px;
-      overflow-y: auto;
-    }
-
-    .main-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 18px;
-      gap: 10px;
-    }
-
-    .page-title {
-      font-size: 22px;
-      font-weight: 600;
-    }
-
-    .user-pill {
-      font-size: 13px;
-      color: var(--muted);
-    }
-
-    .user-pill strong {
-      color: #fff;
-      font-weight: 600;
-    }
-
-    .upgrade-btn {
-      border-radius: 999px;
-      border: none;
-      padding: 8px 14px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      background: #fff;
-      color: #000;
-      margin-left: 8px;
-    }
-
-    .upgrade-btn:hover {
-      opacity: 0.9;
-    }
-
-    .hero {
-      background: linear-gradient(135deg, #262626, #111);
-      border-radius: 16px;
-      padding: 18px 18px 16px;
-      margin-bottom: 18px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 14px;
-      align-items: center;
-    }
-
-    .hero-text {
-      flex: 1 1 200px;
-    }
-
-    .hero-title {
-      font-size: 20px;
-      font-weight: 600;
-      margin-bottom: 4px;
-    }
-
-    .hero-sub {
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-
-    .hero-cta {
-      font-size: 13px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      color: var(--accent);
-    }
-
-    .hero-cta span.icon {
-      font-size: 16px;
-    }
-
-    .track-list-card {
-      background: var(--bg-card);
-      border-radius: 12px;
-      padding: 8px 0;
-      border: 1px solid var(--border-subtle);
-    }
-
-    .track-header {
-      display: grid;
-      grid-template-columns: 32px minmax(0, 3fr) minmax(0, 2fr) 60px;
-      gap: 10px;
-      font-size: 12px;
-      color: var(--muted);
-      padding: 4px 16px 4px;
-      border-bottom: 1px solid var(--border-subtle);
-    }
-
-    .track-row {
-      display: grid;
-      grid-template-columns: 32px minmax(0, 3fr) minmax(0, 2fr) 60px;
-      gap: 10px;
-      align-items: center;
-      font-size: 14px;
-      padding: 6px 16px;
-      cursor: pointer;
-      color: var(--muted);
-    }
-
-    .track-row:hover {
-      background: #212121;
-    }
-
-    .track-row.active {
-      background: #282828;
-      color: #fff;
-    }
-
-    .track-row .index {
-      text-align: right;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .track-row.active .index {
-      color: var(--accent);
-      font-weight: 600;
-    }
-
-    .track-title {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      overflow: hidden;
-    }
-
-    .track-cover {
-      width: 34px;
-      height: 34px;
-      border-radius: 4px;
-      background-size: cover;
-      background-position: center;
-      flex-shrink: 0;
-    }
-
-    .track-meta {
-      overflow: hidden;
-    }
-
-    .track-name {
-      font-size: 14px;
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      overflow: hidden;
-      color: #fff;
-    }
-
-    .track-artist {
-      font-size: 12px;
-      color: var(--muted);
-      white-space: nowrap;
-      text-overflow: ellipsis;
-      overflow: hidden;
-    }
-
-    .track-plays {
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .empty-state {
-      padding: 16px;
-      font-size: 14px;
-      color: var(--muted);
-    }
-
-    /* Player bar */
-    .player-bar {
-      grid-area: player;
-      height: 80px;
-      background: #181818;
-      border-top: 1px solid var(--border-subtle);
+    /* Top bar */
+    .topbar {
+      grid-column: 1 / -1;
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 10px 18px;
-      gap: 16px;
+      border-bottom: 1px solid var(--border);
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      z-index: 20;
     }
-
-    .player-left {
+    .brand {
+      font-weight: 700;
+      letter-spacing: -0.4px;
+      font-size: 22px;
+    }
+    .brand .isee { color: #fff; }
+    .brand .halo { color: var(--halo); }
+    .top-right {
       display: flex;
       align-items: center;
       gap: 12px;
-      min-width: 0;
-      flex: 0 0 220px;
-    }
-
-    .player-cover {
-      width: 48px;
-      height: 48px;
-      border-radius: 6px;
-      background: #333;
-      background-size: cover;
-      background-position: center;
-      flex-shrink: 0;
-    }
-
-    .player-meta {
-      min-width: 0;
-    }
-
-    .player-title {
       font-size: 13px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
-
-    .player-artist {
-      font-size: 11px;
+    .chip {
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: #181818;
+      border: 1px solid #2a2a2a;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .chip span.label {
       color: var(--muted);
+      font-size: 11px;
+    }
+    .chip span.value {
+      font-weight: 600;
+    }
+    button.text-link {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 12px;
+      cursor: pointer;
+      padding: 4px 6px;
+    }
+    button.text-link:hover {
+      color: #fff;
     }
 
-    .player-center {
-      flex: 1 1 auto;
+    /* Sidebar nav */
+    .sidebar {
+      border-right: 1px solid var(--border);
+      background: #050505;
+      padding: 14px 12px;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 4px;
+      gap: 10px;
     }
-
-    .controls {
+    @media (max-width: 900px) {
+      .sidebar {
+        flex-direction: row;
+        justify-content: space-around;
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+      }
+    }
+    .nav-btn {
       display: flex;
       align-items: center;
-      gap: 14px;
-      font-size: 16px;
-    }
-
-    .ctrl-btn {
+      gap: 8px;
+      padding: 8px 10px;
+      border-radius: 10px;
       border: none;
-      background: none;
-      color: #fff;
+      background: transparent;
+      color: var(--muted);
+      font-size: 14px;
       cursor: pointer;
-      font-size: 18px;
+      width: 100%;
+      text-align: left;
+    }
+    .nav-btn span.dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: transparent;
+    }
+    .nav-btn.active {
+      background: linear-gradient(90deg, #202020, #101010);
+      color: #fff;
+      font-weight: 600;
+    }
+    .nav-btn.active span.dot {
+      background: var(--accent);
+    }
+    .nav-btn:hover {
+      background: #151515;
+      color: #fff;
     }
 
-    .ctrl-btn.small {
-      font-size: 14px;
+    /* Main content */
+    .main {
+      padding: 14px 18px 70px;
+      overflow-y: auto;
+      max-height: calc(100vh - 48px);
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin: 0 0 8px;
+    }
+    .section-sub {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* Cards / grids */
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 14px 14px 12px;
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 12px;
+    }
+    .flex {
+      display: flex;
+    }
+    .flex-between {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .badge {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: #202020;
       color: var(--muted);
     }
-
-    .ctrl-btn:hover {
+    .badge.accent {
+      background: rgba(29, 185, 84, 0.14);
       color: var(--accent);
     }
 
-    .progress-row {
-      width: 100%;
-      max-width: 420px;
+    /* Buttons */
+    .btn-sm {
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      background: #1f1f1f;
+      color: #fff;
+    }
+    .btn-sm.primary {
+      background: linear-gradient(90deg, #ffd700, #ffcc33);
+      color: #000;
+      font-weight: 600;
+    }
+    .btn-sm:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+
+    /* Feed */
+    .feed-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .post {
+      background: var(--card-soft);
+      border-radius: 16px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+    .post-header {
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 10px;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .avatar-circle {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #444, #888);
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-transform: uppercase;
+    }
+    .post-user {
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .post-meta {
+      font-size: 11px;
       color: var(--muted);
     }
-
-    .progress-row input[type=range] {
-      flex: 1;
-      -webkit-appearance: none;
-      height: 4px;
-      border-radius: 2px;
-      background: #333;
-      outline: none;
+    .post-body {
+      font-size: 14px;
+      margin-bottom: 6px;
     }
-
-    .progress-row input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #fff;
-      cursor: pointer;
+    .post-song {
+      margin-top: 6px;
+      padding: 6px 8px;
+      border-radius: 10px;
+      background: #181818;
+      font-size: 12px;
     }
-
-    .player-right {
-      flex: 0 0 160px;
+    .post-actions {
       display: flex;
-      align-items: center;
-      justify-content: flex-end;
       gap: 10px;
+      margin-top: 6px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .post-actions button {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      padding: 3px 0;
+    }
+    .post-actions button:hover {
+      color: #fff;
+    }
+
+    /* Shop items */
+    .song-card, .product-card {
+      background: var(--card-soft);
+      border-radius: 14px;
+      padding: 10px 10px 8px;
+      border: 1px solid #1f1f1f;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .song-title, .product-name {
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .song-artist, .product-desc {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .song-meta, .product-meta {
       font-size: 11px;
       color: var(--muted);
     }
 
-    .player-right input[type=range] {
-      width: 80px;
-      -webkit-appearance: none;
-      height: 4px;
-      border-radius: 2px;
-      background: #333;
+    /* Profile */
+    .profile-columns {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+      gap: 14px;
+    }
+    @media (max-width: 900px) {
+      .profile-columns {
+        grid-template-columns: 1fr;
+      }
+    }
+    .field-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .field-value {
+      font-size: 13px;
+      font-weight: 500;
+    }
+    input.inline-input {
+      width: 100%;
+      padding: 7px 9px;
+      border-radius: 10px;
+      border: 1px solid #303030;
+      background: #111;
+      color: #fff;
+      font-size: 13px;
       outline: none;
     }
-
-    .player-right input[type=range]::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #fff;
-      cursor: pointer;
+    input.inline-input:focus {
+      border-color: #444;
     }
 
-    @media (max-width: 700px) {
-      .player-left {
-        display: none;
-      }
-      .player-right {
-        display: none;
-      }
-      .player-bar {
-        justify-content: center;
-      }
+    /* Helper */
+    .hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .error {
+      color: var(--danger);
+      font-size: 12px;
+      margin-top: 4px;
+    }
+    .empty {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
     }
   </style>
 </head>
 <body>
-  <div class="shell">
-    <!-- Sidebar -->
-    <aside class="sidebar">
+  <div class="app-shell">
+    <!-- Top bar -->
+    <header class="topbar">
       <div class="brand">
         <span class="isee">isee</span><span class="halo">halo</span>
       </div>
-
-      <nav class="nav">
-        <div class="nav-item active">
-          <span class="icon">🏠</span>
-          <span>Home</span>
+      <div class="top-right">
+        <div class="chip" id="creditsChip">
+          <span class="label">Credits</span>
+          <span class="value" id="creditsValue">—</span>
         </div>
-        <div class="nav-item">
-          <span class="icon">🔍</span>
-          <span>Search</span>
+        <div class="chip" id="premiumChip">
+          <span class="label">Plan</span>
+          <span class="value" id="premiumValue">Free</span>
         </div>
-        <div class="nav-item">
-          <span class="icon">🎵</span>
-          <span>Your Library</span>
-        </div>
-      </nav>
-
-      <div class="sidebar-foot">
-        <div>Web beta · built with Supabase & Stripe</div>
-        <div style="margin-top: 4px;">
-          <a href="/index.html">Premium</a> · <a href="/auth.html">Sign in</a>
-        </div>
+        <span id="userEmail" style="font-size:12px;color:var(--muted);"></span>
+        <button class="text-link" id="btnSignAuth">Sign in</button>
+        <button class="text-link" id="btnSignOut" style="display:none;">Sign out</button>
       </div>
-    </aside>
+    </header>
+
+    <!-- Sidebar nav -->
+    <nav class="sidebar">
+      <button class="nav-btn active" data-view="home">
+        <span class="dot"></span>
+        Home
+      </button>
+      <button class="nav-btn" data-view="shop">
+        <span class="dot"></span>
+        Shop
+      </button>
+      <button class="nav-btn" data-view="profile">
+        <span class="dot"></span>
+        Profile
+      </button>
+    </nav>
 
     <!-- Main content -->
     <main class="main">
-      <header class="main-header">
-        <div class="page-title">Listen Now</div>
-        <div class="user-pill" id="userPill">
-          Guest mode · <button class="upgrade-btn" onclick="window.location.href='/index.html'">Go Premium</button>
-        </div>
-      </header>
+      <!-- HOME / FEED -->
+      <section id="view-home">
+        <h2 class="section-title">Home</h2>
+        <p class="section-sub">See what artists and fans are sharing on iseehalo.</p>
 
-      <section class="hero">
-        <div class="hero-text">
-          <div class="hero-title">Streaming for everyone.</div>
-          <div class="hero-sub">
-            Jump into the latest drops from the iseehalo community.
-          </div>
-          <div class="hero-cta" onclick="window.location.href='/index.html'">
-            <span class="icon">💎</span>
-            <span>Upgrade to Premium for exclusives & offline listening</span>
-          </div>
+        <div class="card">
+          <div id="feedError" class="error" style="display:none;"></div>
+          <div id="feedEmpty" class="empty" style="display:none;">No posts yet.</div>
+          <div id="feedList" class="feed-list"></div>
         </div>
       </section>
 
-      <section>
-        <h3 style="font-size:16px; margin: 0 0 8px;">All tracks</h3>
-        <div class="track-list-card" id="trackListCard">
-          <div class="track-header">
-            <div>#</div>
-            <div>Title</div>
-            <div>Artist</div>
-            <div>Plays</div>
+      <!-- SHOP -->
+      <section id="view-shop" style="display:none;">
+        <h2 class="section-title">Shop</h2>
+        <p class="section-sub">
+          Discover limited song copies and products you can buy with your credits.
+        </p>
+
+        <div class="card" style="margin-bottom:12px;">
+          <div class="flex-between" style="margin-bottom:6px;">
+            <div>
+              <div class="badge accent">Song copies</div>
+              <div class="hint">Own a share of the songs you love.</div>
+            </div>
           </div>
-          <div id="tracksContainer">
-            <div class="empty-state" id="emptyState">Loading tracks…</div>
+          <div id="songCopiesEmpty" class="empty" style="display:none;">No copies listed right now.</div>
+          <div id="songCopiesGrid" class="grid"></div>
+        </div>
+
+        <div class="card">
+          <div class="flex-between" style="margin-bottom:6px;">
+            <div>
+              <div class="badge accent">Products</div>
+              <div class="hint">Physical items and drops.</div>
+            </div>
+          </div>
+          <div id="productsEmpty" class="empty" style="display:none;">No products available yet.</div>
+          <div id="productsGrid" class="grid"></div>
+        </div>
+      </section>
+
+      <!-- PROFILE -->
+      <section id="view-profile" style="display:none;">
+        <h2 class="section-title">Profile</h2>
+        <p class="section-sub">View your credits, copies, and uploaded songs.</p>
+
+        <div id="profileGate" class="card" style="margin-bottom:12px; display:none;">
+          <p class="empty">
+            You need to sign in to see your profile.
+          </p>
+          <button class="btn-sm primary" id="goAuthFromProfile">Sign in / Create account</button>
+        </div>
+
+        <div id="profileContent" style="display:none;">
+          <div class="profile-columns">
+            <!-- Left: basic info -->
+            <div class="card">
+              <div class="flex-between" style="margin-bottom:6px;">
+                <div>
+                  <div class="badge accent">Account</div>
+                </div>
+              </div>
+              <div style="display:grid;gap:8px;">
+                <div>
+                  <div class="field-label">Email</div>
+                  <div class="field-value" id="profileEmail">—</div>
+                </div>
+                <div>
+                  <div class="field-label">Username</div>
+                  <input id="profileUsername" class="inline-input" placeholder="Add a username" />
+                  <div class="hint">This is what others will see on posts.</div>
+                  <div id="profileSaveMsg" class="hint"></div>
+                </div>
+                <div>
+                  <div class="field-label">Credits</div>
+                  <div class="field-value" id="profileCredits">—</div>
+                </div>
+                <div>
+                  <div class="field-label">Total earned</div>
+                  <div class="field-value" id="profileTotalEarned">—</div>
+                </div>
+                <div>
+                  <div class="field-label">Premium</div>
+                  <div class="field-value" id="profilePremium">Free</div>
+                </div>
+              </div>
+              <div style="margin-top:10px;">
+                <button class="btn-sm primary" id="saveProfileBtn">Save profile</button>
+              </div>
+            </div>
+
+            <!-- Right: stats / quick view -->
+            <div class="card">
+              <div class="badge accent">Overview</div>
+              <div class="hint" style="margin-top:4px;">
+                Quick glance at your holdings.
+              </div>
+              <div style="margin-top:10px;">
+                <div class="field-label">Purchased copies</div>
+                <div class="field-value" id="profileCopyCount">0</div>
+              </div>
+              <div style="margin-top:6px;">
+                <div class="field-label">Uploaded songs</div>
+                <div class="field-value" id="profileSongCount">0</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:14px;">
+            <div class="flex-between" style="margin-bottom:6px;">
+              <div class="badge">My copies</div>
+            </div>
+            <div id="myCopiesEmpty" class="empty" style="display:none;">You don’t own any copies yet.</div>
+            <div id="myCopiesGrid" class="grid"></div>
+          </div>
+
+          <div class="card" style="margin-top:12px;">
+            <div class="flex-between" style="margin-bottom:6px;">
+              <div class="badge">My uploaded songs</div>
+            </div>
+            <div id="mySongsEmpty" class="empty" style="display:none;">You haven’t uploaded any songs yet.</div>
+            <div id="mySongsGrid" class="grid"></div>
           </div>
         </div>
       </section>
     </main>
-
-    <!-- Player bar -->
-    <footer class="player-bar">
-      <div class="player-left">
-        <div class="player-cover" id="playerCover"></div>
-        <div class="player-meta">
-          <div class="player-title" id="playerTitle">Nothing playing</div>
-          <div class="player-artist" id="playerArtist"></div>
-        </div>
-      </div>
-
-      <div class="player-center">
-        <div class="controls">
-          <button class="ctrl-btn small" id="prevBtn">⏮</button>
-          <button class="ctrl-btn" id="playPauseBtn">▶</button>
-          <button class="ctrl-btn small" id="nextBtn">⏭</button>
-        </div>
-        <div class="progress-row">
-          <span id="currentTime">0:00</span>
-          <input type="range" id="seekBar" min="0" max="100" value="0" />
-          <span id="durationTime">0:00</span>
-        </div>
-      </div>
-
-      <div class="player-right">
-        <span>Vol</span>
-        <input type="range" id="volumeBar" min="0" max="100" value="80" />
-      </div>
-
-      <audio id="audio"></audio>
-    </footer>
   </div>
 
-  <!-- Supabase client (ESM version you already have) -->
+  <!-- Supabase client (ES module that sets window.supabase) -->
   <script type="module" src="/js/supabaseClient.js"></script>
+
   <script type="module">
-    // Wait until supabaseClient.js attaches window.supabase
-    document.addEventListener("DOMContentLoaded", async () => {
+    document.addEventListener('DOMContentLoaded', () => {
       const supabase = window.supabase;
       if (!supabase) {
-        console.error("Supabase client not found on window");
-        document.getElementById("emptyState").textContent = "Could not load tracks (Supabase error).";
+        console.error("Supabase client missing");
         return;
       }
 
-      const tracksContainer = document.getElementById("tracksContainer");
-      const emptyState = document.getElementById("emptyState");
-      const audio = document.getElementById("audio");
-      const playPauseBtn = document.getElementById("playPauseBtn");
-      const prevBtn = document.getElementById("prevBtn");
-      const nextBtn = document.getElementById("nextBtn");
-      const seekBar = document.getElementById("seekBar");
-      const volumeBar = document.getElementById("volumeBar");
-      const playerCover = document.getElementById("playerCover");
-      const playerTitle = document.getElementById("playerTitle");
-      const playerArtist = document.getElementById("playerArtist");
-      const currentTimeEl = document.getElementById("currentTime");
-      const durationTimeEl = document.getElementById("durationTime");
-      const userPill = document.getElementById("userPill");
-
-      let tracks = [];
-      let currentIndex = -1;
-      let isSeeking = false;
-
-      // Show if logged in (optional – doesn't gate playback)
-      try {
-        const { data, error } = await supabase.auth.getSession();
-        if (!error && data?.session) {
-          userPill.innerHTML = `Signed in as <strong>${data.session.user.email}</strong> · <button class="upgrade-btn" onclick="window.location.href='/index.html'">Go Premium</button>`;
-        }
-      } catch (e) {
-        console.warn("auth getSession error", e);
-      }
-
-      function formatTime(seconds) {
-        if (!seconds || isNaN(seconds)) return "0:00";
-        const m = Math.floor(seconds / 60);
-        const s = Math.floor(seconds % 60);
-        return m + ":" + (s < 10 ? "0" + s : s);
-      }
-
-      function renderTracks() {
-        tracksContainer.innerHTML = "";
-        if (!tracks.length) {
-          emptyState.textContent = "No tracks yet. Add some songs in the Supabase `songs` table.";
-          tracksContainer.appendChild(emptyState);
-          return;
-        }
-
-        tracks.forEach((t, i) => {
-          const row = document.createElement("div");
-          row.className = "track-row";
-          row.dataset.index = i;
-
-          const coverUrl = t.cover_url ||
-            "https://via.placeholder.com/80x80.png?text=iseehalo";
-
-          row.innerHTML = `
-            <div class="index">${i + 1}</div>
-            <div class="track-title">
-              <div class="track-cover" style="background-image:url('${coverUrl}')"></div>
-              <div class="track-meta">
-                <div class="track-name">${t.title || "Untitled"}</div>
-                <div class="track-artist">${t.artist || "Unknown artist"}</div>
-              </div>
-            </div>
-            <div class="track-artist">${t.artist || "Unknown"}</div>
-            <div class="track-plays">${t.stream_count ?? 0}</div>
-          `;
-          row.addEventListener("click", () => playTrackAt(i));
-          tracksContainer.appendChild(row);
+      // Nav handling
+      const navButtons = document.querySelectorAll('.nav-btn');
+      const views = {
+        home: document.getElementById('view-home'),
+        shop: document.getElementById('view-shop'),
+        profile: document.getElementById('view-profile'),
+      };
+      navButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const view = btn.dataset.view;
+          navButtons.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          Object.entries(views).forEach(([key, el]) => {
+            el.style.display = key === view ? 'block' : 'none';
+          });
         });
+      });
 
-        updateActiveRow();
-      }
+      // Topbar elements
+      const userEmailEl = document.getElementById('userEmail');
+      const creditsValueEl = document.getElementById('creditsValue');
+      const premiumValueEl = document.getElementById('premiumValue');
+      const btnSignAuth = document.getElementById('btnSignAuth');
+      const btnSignOut = document.getElementById('btnSignOut');
 
-      function updateActiveRow() {
-        const rows = tracksContainer.querySelectorAll(".track-row");
-        rows.forEach((r) => r.classList.remove("active"));
-        if (currentIndex >= 0 && currentIndex < rows.length) {
-          rows[currentIndex].classList.add("active");
+      const profileGate = document.getElementById('profileGate');
+      const profileContent = document.getElementById('profileContent');
+      const goAuthFromProfile = document.getElementById('goAuthFromProfile');
+
+      // Profile elements
+      const profileEmail = document.getElementById('profileEmail');
+      const profileUsername = document.getElementById('profileUsername');
+      const profileCredits = document.getElementById('profileCredits');
+      const profileTotalEarned = document.getElementById('profileTotalEarned');
+      const profilePremium = document.getElementById('profilePremium');
+      const profileCopyCount = document.getElementById('profileCopyCount');
+      const profileSongCount = document.getElementById('profileSongCount');
+      const saveProfileBtn = document.getElementById('saveProfileBtn');
+      const profileSaveMsg = document.getElementById('profileSaveMsg');
+
+      // Shop elements
+      const songCopiesGrid = document.getElementById('songCopiesGrid');
+      const songCopiesEmpty = document.getElementById('songCopiesEmpty');
+      const productsGrid = document.getElementById('productsGrid');
+      const productsEmpty = document.getElementById('productsEmpty');
+      const myCopiesGrid = document.getElementById('myCopiesGrid');
+      const myCopiesEmpty = document.getElementById('myCopiesEmpty');
+      const mySongsGrid = document.getElementById('mySongsGrid');
+      const mySongsEmpty = document.getElementById('mySongsEmpty');
+
+      // Feed elements
+      const feedList = document.getElementById('feedList');
+      const feedEmpty = document.getElementById('feedEmpty');
+      const feedError = document.getElementById('feedError');
+
+      const gotoAuth = () => window.location.href = '/auth.html';
+
+      btnSignAuth.addEventListener('click', gotoAuth);
+      goAuthFromProfile.addEventListener('click', gotoAuth);
+
+      btnSignOut.addEventListener('click', async () => {
+        await supabase.auth.signOut();
+        await refreshAuthState();
+      });
+
+      async function refreshAuthState() {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error(error);
+        }
+        const session = data?.session || null;
+        if (!session) {
+          userEmailEl.textContent = '';
+          creditsValueEl.textContent = '—';
+          premiumValueEl.textContent = 'Free';
+          btnSignAuth.style.display = 'inline-block';
+          btnSignOut.style.display = 'none';
+
+          profileGate.style.display = 'block';
+          profileContent.style.display = 'none';
+        } else {
+          userEmailEl.textContent = session.user.email;
+          btnSignAuth.style.display = 'none';
+          btnSignOut.style.display = 'inline-block';
+
+          // Load profile info
+          await loadProfile(session.user);
         }
       }
 
-      function loadTrack(idx) {
-        if (idx < 0 || idx >= tracks.length) return;
-        const track = tracks[idx];
-        currentIndex = idx;
-        audio.src = track.audio_url || "";
-        playerTitle.textContent = track.title || "Untitled";
-        playerArtist.textContent = track.artist || "";
-        playerCover.style.backgroundImage = `url('${
-          track.cover_url ||
-          "https://via.placeholder.com/80x80.png?text=iseehalo"
-        }')`;
-        updateActiveRow();
+      async function loadProfile(user) {
+        try {
+          const { data: profile, error } = await supabase
+            .from('users')
+            .select('id, email, username, credits, total_earned, is_premium')
+            .eq('id', user.id)
+            .maybeSingle();
+          if (error) throw error;
+
+          profileGate.style.display = 'none';
+          profileContent.style.display = 'block';
+
+          profileEmail.textContent = profile?.email || user.email;
+          profileUsername.value = profile?.username || '';
+          profileCredits.textContent = profile?.credits ?? 0;
+          profileTotalEarned.textContent = profile?.total_earned ?? 0;
+          profilePremium.textContent = profile?.is_premium ? 'Premium' : 'Free';
+
+          creditsValueEl.textContent = profile?.credits ?? 0;
+          premiumValueEl.textContent = profile?.is_premium ? 'Premium' : 'Free';
+
+          // My copies
+          const { data: myCopies, error: copyErr } = await supabase
+            .from('song_copies')
+            .select(`
+              id,
+              song:songs ( id, title, artist, cover_url, stream_count )
+            `)
+            .eq('owner', user.id);
+
+          if (copyErr) throw copyErr;
+
+          renderSongCardGrid(myCopiesGrid, myCopies || []);
+          myCopiesEmpty.style.display = !myCopies || myCopies.length === 0 ? 'block' : 'none';
+          profileCopyCount.textContent = myCopies?.length || 0;
+
+          // My songs
+          const { data: mySongs, error: songsErr } = await supabase
+            .from('songs')
+            .select('id, title, artist, cover_url, stream_count')
+            .eq('creator_id', user.id);
+
+          if (songsErr) throw songsErr;
+
+          renderSongCardGrid(mySongsGrid, mySongs || []);
+          mySongsEmpty.style.display = !mySongs || mySongs.length === 0 ? 'block' : 'none';
+          profileSongCount.textContent = mySongs?.length || 0;
+        } catch (err) {
+          console.error('loadProfile error', err);
+          profileGate.style.display = 'block';
+          profileContent.style.display = 'none';
+        }
       }
 
-      async function playTrackAt(idx) {
-        const wasSame = currentIndex === idx;
-        if (!wasSame) {
-          loadTrack(idx);
+      saveProfileBtn.addEventListener('click', async () => {
+        profileSaveMsg.textContent = 'Saving…';
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          profileSaveMsg.textContent = 'You must be signed in.';
+          return;
         }
         try {
-          await audio.play();
-          playPauseBtn.textContent = "⏸";
-        } catch (e) {
-          console.error("play error", e);
+          const { error } = await supabase
+            .from('users')
+            .update({ username: profileUsername.value || null })
+            .eq('id', user.id);
+          if (error) throw error;
+          profileSaveMsg.textContent = 'Saved ✔';
+        } catch (err) {
+          console.error(err);
+          profileSaveMsg.textContent = 'Could not save.';
         }
+      });
+
+      function renderSongCardGrid(container, rows) {
+        container.innerHTML = '';
+        if (!rows || rows.length === 0) return;
+        rows.forEach((row) => {
+          const song = row.song || row;
+          const el = document.createElement('div');
+          el.className = 'song-card';
+          el.innerHTML = `
+            <div class="song-title">${song.title || 'Untitled'}</div>
+            <div class="song-artist">${song.artist || 'Unknown artist'}</div>
+            <div class="song-meta">Streams: ${song.stream_count ?? 0}</div>
+          `;
+          container.appendChild(el);
+        });
       }
 
-      playPauseBtn.addEventListener("click", async () => {
-        if (!audio.src) {
-          if (tracks.length > 0) {
-            await playTrackAt(0);
+      async function loadShop() {
+        try {
+          // Copies
+          const { data: copies, error: copyErr } = await supabase
+            .from('song_copies')
+            .select(`
+              id,
+              is_listed,
+              listing_price,
+              song:songs ( id, title, artist, cover_url, stream_count )
+            `)
+            .eq('is_listed', true);
+
+          if (copyErr) throw copyErr;
+
+          songCopiesGrid.innerHTML = '';
+          if (!copies || copies.length === 0) {
+            songCopiesEmpty.style.display = 'block';
+          } else {
+            songCopiesEmpty.style.display = 'none';
+            copies.forEach((row) => {
+              const song = row.song || {};
+              const card = document.createElement('div');
+              card.className = 'song-card';
+              card.innerHTML = `
+                <div class="song-title">${song.title || 'Untitled'}</div>
+                <div class="song-artist">${song.artist || 'Unknown artist'}</div>
+                <div class="song-meta">Streams: ${song.stream_count ?? 0}</div>
+                <div class="song-meta">Price: ${row.listing_price ?? 0} credits</div>
+                <button class="btn-sm primary" data-copy-id="${row.id}">Buy copy</button>
+              `;
+              songCopiesGrid.appendChild(card);
+            });
           }
-          return;
+
+          // Simple handler stub for buying copy
+          songCopiesGrid.addEventListener('click', async (e) => {
+            const btn = e.target.closest('button[data-copy-id]');
+            if (!btn) return;
+            alert("Buying via web is not wired yet — you'll hook this into your buy_song_copy_by_user() RPC.");
+          }, { once: true });
+
+          // Products
+          const { data: products, error: prodErr } = await supabase
+            .from('products')
+            .select('*')
+            .eq('in_stock', true)
+            .order('created_at', { ascending: false });
+
+          if (prodErr) throw prodErr;
+
+          productsGrid.innerHTML = '';
+          if (!products || products.length === 0) {
+            productsEmpty.style.display = 'block';
+          } else {
+            productsEmpty.style.display = 'none';
+            products.forEach((p) => {
+              const card = document.createElement('div');
+              card.className = 'product-card';
+              card.innerHTML = `
+                <div class="product-name">${p.name}</div>
+                <div class="product-desc">${p.description}</div>
+                <div class="product-meta">Price: ${(p.price_cents ?? 0)} credits</div>
+                <button class="btn-sm primary" data-product-id="${p.id}">Buy</button>
+              `;
+              productsGrid.appendChild(card);
+            });
+          }
+
+          productsGrid.addEventListener('click', async (e) => {
+            const btn = e.target.closest('button[data-product-id]');
+            if (!btn) return;
+            alert("Buying products via web is not wired yet — you'll connect this to buy_product() RPC.");
+          }, { once: true });
+        } catch (err) {
+          console.error('loadShop error', err);
         }
-        if (audio.paused) {
-          await audio.play();
-          playPauseBtn.textContent = "⏸";
-        } else {
-          audio.pause();
-          playPauseBtn.textContent = "▶";
-        }
-      });
-
-      prevBtn.addEventListener("click", () => {
-        if (!tracks.length) return;
-        const idx = currentIndex <= 0 ? tracks.length - 1 : currentIndex - 1;
-        playTrackAt(idx);
-      });
-
-      nextBtn.addEventListener("click", () => {
-        if (!tracks.length) return;
-        const idx = currentIndex >= tracks.length - 1 ? 0 : currentIndex + 1;
-        playTrackAt(idx);
-      });
-
-      audio.addEventListener("timeupdate", () => {
-        if (isSeeking) return;
-        const ct = audio.currentTime || 0;
-        const dur = audio.duration || 0;
-        currentTimeEl.textContent = formatTime(ct);
-        durationTimeEl.textContent = formatTime(dur);
-        if (dur > 0) {
-          seekBar.value = Math.floor((ct / dur) * 100);
-        } else {
-          seekBar.value = 0;
-        }
-      });
-
-      audio.addEventListener("ended", () => {
-        if (!tracks.length) return;
-        const idx = currentIndex >= tracks.length - 1 ? 0 : currentIndex + 1;
-        playTrackAt(idx);
-      });
-
-      seekBar.addEventListener("input", () => {
-        isSeeking = true;
-      });
-
-      seekBar.addEventListener("change", () => {
-        if (!audio.duration) return;
-        const pct = parseInt(seekBar.value, 10) || 0;
-        audio.currentTime = (pct / 100) * audio.duration;
-        isSeeking = false;
-      });
-
-      volumeBar.addEventListener("input", () => {
-        const v = parseInt(volumeBar.value, 10) || 0;
-        audio.volume = Math.min(Math.max(v / 100, 0), 1);
-      });
-
-      audio.volume = 0.8;
-
-      // Fetch tracks from Supabase
-      try {
-        const { data, error } = await supabase
-          .from("songs")
-          .select("id, title, artist, audio_url, cover_url, stream_count, created_at")
-          .order("created_at", { ascending: false });
-
-        if (error) {
-          console.error("Error fetching songs:", error);
-          emptyState.textContent = "Could not load tracks (check Supabase policies).";
-          return;
-        }
-
-        tracks = data || [];
-        if (!tracks.length) {
-          emptyState.textContent = "No tracks yet. Add some songs in the Supabase `songs` table.";
-          return;
-        }
-
-        emptyState.remove();
-        renderTracks();
-        // Pre-load first track (don’t auto-play)
-        loadTrack(0);
-      } catch (e) {
-        console.error("Unexpected error getting tracks:", e);
-        emptyState.textContent = "Could not load tracks.";
       }
+
+            async function loadFeed() {
+        feedError.style.display = 'none';
+        feedEmpty.style.display = 'none';
+        feedList.innerHTML = '';
+
+        try {
+          const { data: posts, error } = await supabase
+            .from('posts')
+            .select(`
+              id,
+              caption,
+              media_url,
+              media_type,
+              created_at,
+              song_id,
+              user:users ( id, username, email ),
+              post_likes(count),
+              comments(count)
+            `)
+            .order('created_at', { ascending: false })
+            .limit(30);
+
+          if (error) throw error;
+
+          if (!posts || posts.length === 0) {
+            feedEmpty.style.display = 'block';
+            return;
+          }
+
+          posts.forEach((post) => {
+            const div = document.createElement('div');
+            div.className = 'post';
+
+            const username =
+              post.user?.username ||
+              (post.user?.email?.split('@')[0] ?? 'User');
+
+            const initials = username
+              .split(' ')
+              .map((x) => x[0])
+              .join('')
+              .slice(0, 2)
+              .toUpperCase();
+
+            const dateStr = new Date(post.created_at).toLocaleDateString();
+
+            const likesCount =
+              post.post_likes?.[0]?.count != null
+                ? post.post_likes[0].count
+                : 0;
+
+            const commentsCount =
+              post.comments?.[0]?.count != null
+                ? post.comments[0].count
+                : 0;
+
+            div.innerHTML = `
+              <div class="post-header">
+                <div class="avatar-circle">${initials || 'U'}</div>
+                <div>
+                  <div class="post-user">${username}</div>
+                  <div class="post-meta">${dateStr}</div>
+                </div>
+              </div>
+              <div class="post-body">
+                ${post.caption ? post.caption.replace(/</g, "&lt;") : ''}
+              </div>
+              ${
+                post.song_id
+                  ? `
+                <div class="post-song">
+                  Linked song ID: <code>${post.song_id}</code>
+                </div>
+              `
+                  : ''
+              }
+              <div class="post-actions">
+                <button data-action="like" data-post-id="${post.id}">
+                  ♥ Like · ${likesCount}
+                </button>
+                <button data-action="comment" data-post-id="${post.id}">
+                  💬 Comment · ${commentsCount}
+                </button>
+              </div>
+            `;
+            feedList.appendChild(div);
+          });
+
+          // Attach click handler (overwrites any previous one)
+          feedList.onclick = async (e) => {
+            const btn = e.target.closest('button[data-action]');
+            if (!btn) return;
+
+            const action = btn.dataset.action;
+            const postId = btn.dataset.postId;
+
+            // Require auth
+            const { data: userData } = await supabase.auth.getUser();
+            const user = userData?.user || null;
+            if (!user) {
+              const go = confirm('Sign in to interact with posts?');
+              if (go) window.location.href = '/auth.html';
+              return;
+            }
+
+            try {
+              if (action === 'like') {
+                // Try to insert; ignore duplicate error
+                const { error: likeErr } = await supabase
+                  .from('post_likes')
+                  .insert({
+                    post_id: postId,
+                    user_id: user.id,
+                  });
+
+                if (likeErr) {
+                  // If it's just "duplicate key", ignore; else throw
+                  if (!/duplicate key value/i.test(likeErr.message || '')) {
+                    throw likeErr;
+                  }
+                }
+              } else if (action === 'comment') {
+                const text = prompt('Write a comment:');
+                if (!text || !text.trim()) return;
+
+                const { error: commentErr } = await supabase
+                  .from('comments')
+                  .insert({
+                    post_id: postId,
+                    user_id: user.id,
+                    text: text.trim(),
+                  });
+
+                if (commentErr) throw commentErr;
+              }
+
+              // Refresh to update counts
+              await loadFeed();
+            } catch (err) {
+              console.error(err);
+              alert(
+                'Could not ' +
+                  (action === 'like' ? 'like this post.' : 'add comment.')
+              );
+            }
+          };
+        } catch (err) {
+          console.error(err);
+          feedError.textContent = 'Could not load feed.';
+          feedError.style.display = 'block';
+        }
+      }
+
+
+      // Initial load
+      refreshAuthState();
+      loadFeed();
+      loadShop();
+
+      supabase.auth.onAuthStateChange(() => {
+        refreshAuthState();
+      });
     });
   </script>
 </body>

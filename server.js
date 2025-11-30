@@ -170,6 +170,10 @@ app.get("/reset", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "reset.html"
 app.get("/dashboard", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "dashboard.html")));
 app.get("/success", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "success.html")));
 app.get("/cancel", (_req, res) => res.sendFile(path.join(PUBLIC_DIR, "cancel.html")));
+app.get("/app", (_req, res) =>
+  res.sendFile(path.join(PUBLIC_DIR, "app.html"))
+);
+
 
 app.get("/healthz", (_req, res) => res.json({ ok: true }));
 

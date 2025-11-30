@@ -2,19 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>iseehalo — Web app</title>
+  <title>iseehalo — Web App</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #000000;
-      --bg-elevated: #0f0f0f;
-      --bg-card: #111111;
-      --accent: #1db954;
-      --halo: #fff59e;
-      --muted: #aaaaaa;
-      --border: #202020;
-      --danger: #ff6b6b;
+      --bg: #000;
+      --panel: #0c0c0c;
+      --panel-alt: #111;
+      --accent: #1DB954;
+      --halo: #FFF59E;
+      --text: #fff;
+      --muted: #aaa;
+      --border: #222;
     }
 
     * { box-sizing: border-box; }
@@ -22,954 +22,1092 @@
     body {
       margin: 0;
       min-height: 100vh;
-      background: radial-gradient(circle at top, #202020 0, #000 45%);
-      color: #ffffff;
-      font-family: "Poppins", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-    }
-
-    .shell {
+      font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+      background: radial-gradient(circle at top, #1c1c1c 0, #000 45%);
+      color: var(--text);
       display: flex;
       flex-direction: column;
-      height: 100vh;
     }
 
-    /* Top bar */
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 18px;
-      border-bottom: 1px solid #151515;
-      background: rgba(0,0,0,0.92);
-      backdrop-filter: blur(10px);
+    .app-shell {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      gap: 0;
+      max-height: 100vh;
     }
+
+    @media (max-width: 900px) {
+      .app-shell {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+      }
+      .sidebar {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+      }
+      .nav-links {
+        flex-direction: row;
+      }
+    }
+
+    /* Sidebar */
+
+    .sidebar {
+      background: #050505;
+      border-right: 1px solid var(--border);
+      padding: 16px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
     .brand {
       font-size: 22px;
       font-weight: 700;
       letter-spacing: -0.4px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      gap: 8px;
+      gap: 0; /* no visual space between isee + halo */
     }
     .isee { color: #fff; }
     .halo { color: var(--halo); }
 
-    .pill-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 13px;
-    }
-    .pill {
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: #111;
-      border: 1px solid #222;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-    .pill-label { color: var(--muted); font-size: 11px; text-transform: uppercase; }
-    .pill-value { font-weight: 600; }
-
-    .user-email {
-      font-size: 13px;
+    .tagline {
+      font-size: 12px;
       color: var(--muted);
-    }
-    .link {
-      color: var(--accent);
-      text-decoration: none;
-      font-size: 13px;
-      cursor: pointer;
-    }
-    .link:hover { text-decoration: underline; }
-
-    /* Layout */
-    .main {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 220px minmax(0, 1fr);
-      min-height: 0;
+      margin-top: 4px;
+      max-width: 200px;
     }
 
-    @media (max-width: 768px) {
-      .main {
-        grid-template-columns: 1fr;
-      }
-      .sidebar {
-        flex-direction: row;
-        border-right: none;
-        border-bottom: 1px solid #151515;
-        padding: 8px 10px;
-        overflow-x: auto;
-      }
-      .sidebar button {
-        flex: 1;
-        text-align: center;
-      }
-    }
-
-    .sidebar {
-      background: #050505;
-      border-right: 1px solid #151515;
-      padding: 14px 10px;
+    .nav-links {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 4px;
+      margin-top: 12px;
     }
 
     .nav-btn {
-      border-radius: 999px;
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      padding: 8px 14px;
+      width: 100%;
       text-align: left;
+      background: transparent;
+      border: 0;
+      color: var(--muted);
+      padding: 8px 10px;
+      border-radius: 999px;
       font-size: 14px;
       cursor: pointer;
       display: flex;
       align-items: center;
       gap: 8px;
-      transition: background 0.15s ease, color 0.15s ease;
     }
 
-    .nav-btn-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: transparent;
+    .nav-btn span.icon {
+      font-size: 16px;
     }
 
     .nav-btn.active {
-      background: #161616;
+      background: #181818;
       color: #fff;
     }
-    .nav-btn.active .nav-btn-dot {
-      background: var(--accent);
+
+    .nav-btn:hover {
+      background: #151515;
+      color: #fff;
     }
+
+    .sidebar-footer {
+      margin-top: auto;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .sidebar-footer .credits {
+      font-size: 13px;
+      color: var(--halo);
+      font-weight: 600;
+    }
+
+    .sidebar-footer button {
+      margin-top: 6px;
+      background: transparent;
+      border: 0;
+      color: #888;
+      font-size: 12px;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+    }
+
+    /* Main area */
+
+    .main {
+      background: #000;
+      display: flex;
+      flex-direction: column;
+      max-height: 100vh;
+    }
+
+    .top-bar {
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0,0,0,0.8);
+      backdrop-filter: blur(16px);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    .top-title {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .user-chip {
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .user-chip strong { color: #fff; }
 
     .content {
-      padding: 18px;
-      overflow-y: auto;
+      flex: 1;
+      overflow: auto;
+      padding: 16px 18px 90px;
     }
 
-    h1 {
-      margin: 0 0 6px;
-      font-size: 22px;
+    section.view {
+      display: none;
+    }
+    section.view.active {
+      display: block;
     }
 
-    .subhead {
-      margin: 0 0 16px;
-      color: var(--muted);
-      font-size: 14px;
+    /* Feed (Home) */
+
+    .feed {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
 
     .card {
-      background: var(--bg-card);
+      background: var(--panel);
       border-radius: 14px;
-      border: 1px solid #191919;
-      padding: 14px 16px;
-      margin-bottom: 16px;
-    }
-
-    .error-text {
-      color: var(--danger);
-      font-size: 14px;
-    }
-
-    .feed-empty {
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    /* Feed posts */
-    .post {
-      display: grid;
-      grid-template-columns: 56px minmax(0, 1fr);
-      gap: 12px;
-      padding: 10px 0;
-      border-bottom: 1px solid #181818;
-    }
-    .post:last-child { border-bottom: none; }
-
-    .post-avatar {
-      width: 48px;
-      height: 48px;
-      border-radius: 999px;
-      background-position: center;
-      background-size: cover;
-      background-color: #333;
+      padding: 12px 12px 10px;
+      border: 1px solid rgba(255,255,255,0.03);
     }
 
     .post-header {
       display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 6px;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 8px;
     }
-    .post-name {
-      font-weight: 600;
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      background: #222;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-size: 14px;
+      font-weight: 600;
     }
-    .post-time {
-      font-size: 11px;
+
+    .post-meta {
+      font-size: 12px;
       color: var(--muted);
     }
+
     .post-caption {
       font-size: 14px;
+      margin: 4px 0 6px;
+    }
+
+    .post-tag-song {
       margin-top: 4px;
-    }
-    .post-media {
-      margin-top: 8px;
-      border-radius: 12px;
-      overflow: hidden;
-      border: 1px solid #222;
-      max-height: 280px;
-    }
-    .post-media img,
-    .post-media video {
-      width: 100%;
-      display: block;
-      object-fit: cover;
+      font-size: 12px;
+      color: var(--accent);
     }
 
     /* Songs */
-    .songs-grid {
+
+    .song-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
     }
+
     .song-card {
-      display: grid;
-      grid-template-columns: 72px minmax(0, 1fr);
-      gap: 10px;
-      padding: 10px;
+      background: var(--panel);
       border-radius: 14px;
-      border: 1px solid #1c1c1c;
-      background: #101010;
-      font-size: 13px;
-    }
-    .song-cover {
-      width: 72px;
-      height: 72px;
-      border-radius: 12px;
-      background-position: center;
-      background-size: cover;
-      background-color: #333;
-    }
-    .song-title {
-      font-weight: 600;
-      font-size: 14px;
-    }
-    .song-artist {
-      color: var(--muted);
-      font-size: 13px;
-    }
-    .song-meta {
-      margin-top: 4px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .song-bottom {
-      margin-top: 6px;
+      padding: 10px;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-size: 13px;
+      gap: 10px;
+      border: 1px solid rgba(255,255,255,0.03);
     }
-    .song-price {
+
+    .song-cover {
+      width: 60px;
+      height: 60px;
+      border-radius: 10px;
+      background-size: cover;
+      background-position: center;
+      flex-shrink: 0;
+    }
+
+    .song-meta {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .song-title {
+      font-size: 14px;
       font-weight: 600;
     }
-    .song-btn {
-      border-radius: 999px;
-      border: none;
-      background: #fff;
-      color: #000;
+
+    .song-artist {
       font-size: 12px;
+      color: var(--muted);
+    }
+
+    .song-streams {
+      font-size: 11px;
+      color: #777;
+      margin-top: 2px;
+    }
+
+    .song-play-btn {
+      margin-top: 6px;
+      font-size: 12px;
+      border-radius: 999px;
+      border: 0;
       padding: 5px 10px;
       cursor: pointer;
-    }
-    .song-btn:disabled {
-      opacity: 0.5;
-      cursor: default;
+      background: #1DB954;
+      color: #000;
+      font-weight: 600;
+      align-self: flex-start;
     }
 
     /* Shop */
-    .shop-grid {
+
+    .shop-layout {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+      gap: 16px;
+    }
+
+    @media (max-width: 900px) {
+      .shop-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .shop-section-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 12px;
     }
-    .product-card {
-      background: #101010;
+
+    .product-card, .copy-card {
+      background: var(--panel);
       border-radius: 14px;
-      border: 1px solid #1c1c1c;
       padding: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
+      border: 1px solid rgba(255,255,255,0.04);
       font-size: 13px;
     }
-    .product-image {
+
+    .product-thumb {
       width: 100%;
       border-radius: 10px;
-      overflow: hidden;
-      margin-bottom: 6px;
-      max-height: 150px;
-      border: 1px solid #222;
-    }
-    .product-image img {
-      width: 100%;
-      display: block;
+      height: 120px;
       object-fit: cover;
+      background: #222;
+      margin-bottom: 6px;
     }
+
     .product-name {
       font-weight: 600;
-      font-size: 14px;
+      margin-bottom: 4px;
     }
-    .product-description {
-      color: var(--muted);
+
+    .product-price {
+      color: var(--halo);
       font-size: 13px;
     }
-    .product-bottom {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-top: 4px;
-    }
-    .price {
-      font-weight: 600;
-    }
-    .small-btn {
+
+    .product-cta, .copy-cta {
+      margin-top: 6px;
+      width: 100%;
       border-radius: 999px;
-      border: none;
-      background: #fff;
-      color: #000;
+      border: 0;
+      padding: 6px 10px;
       font-size: 12px;
-      padding: 5px 10px;
+      font-weight: 600;
       cursor: pointer;
+      background: #333;
+      color: #eee;
     }
-    .small-btn:disabled {
-      opacity: 0.5;
+
+    .product-cta.disabled, .copy-cta.disabled {
+      opacity: 0.6;
       cursor: default;
     }
 
+    .copy-song {
+      font-weight: 600;
+    }
+
+    .copy-meta {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
     /* Profile */
-    .profile-row {
+
+    .profile-card {
+      max-width: 480px;
+      background: var(--panel);
+      border-radius: 16px;
+      padding: 14px 14px 12px;
+      border: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .profile-header {
       display: flex;
-      flex-wrap: wrap;
       gap: 12px;
       align-items: center;
+      margin-bottom: 10px;
     }
+
     .profile-avatar {
-      width: 72px;
-      height: 72px;
+      width: 56px;
+      height: 56px;
       border-radius: 999px;
-      background-position: center;
       background-size: cover;
-      background-color: #333;
-      border: 2px solid #2c2c2c;
-    }
-
-    .badge {
-      display: inline-flex;
+      background-position: center;
+      background-color: #222;
+      display: flex;
       align-items: center;
-      gap: 4px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: #111;
-      border: 1px solid #222;
-      font-size: 11px;
-    }
-    .badge-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 999px;
-      background: var(--accent);
+      justify-content: center;
+      font-weight: 700;
     }
 
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 10px;
-      margin-top: 12px;
-      font-size: 13px;
-    }
-    .stat-card {
-      background: #101010;
-      border-radius: 12px;
-      border: 1px solid #1b1b1b;
-      padding: 10px 12px;
-    }
-    .stat-label {
-      color: var(--muted);
-      font-size: 11px;
-      text-transform: uppercase;
-      margin-bottom: 4px;
-    }
-    .stat-value {
+    .profile-name {
       font-weight: 600;
       font-size: 15px;
     }
 
-    .section-title {
-      font-size: 14px;
+    .profile-email {
+      font-size: 12px;
       color: var(--muted);
-      margin: 14px 0 6px;
     }
-    .list-plain {
-      margin: 0;
-      padding-left: 14px;
+
+    .badge-premium {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border-radius: 999px;
+      padding: 2px 8px;
+      background: rgba(255,245,158,0.08);
+      border: 1px solid rgba(255,245,158,0.3);
+      font-size: 11px;
+      margin-top: 4px;
+    }
+
+    .badge-premium span.dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--halo);
+    }
+
+    .profile-stats {
+      display: flex;
+      gap: 16px;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    .profile-stats div strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .profile-bio {
       font-size: 13px;
       color: var(--muted);
+      margin-top: 10px;
     }
+
+    .profile-actions {
+      margin-top: 12px;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .btn-outline {
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: #eee;
+      font-size: 12px;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+
+    .btn-outline.accent {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* Player bar */
+
+    .player-bar {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #050505;
+      border-top: 1px solid var(--border);
+      padding: 8px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+    }
+
+    .player-meta {
+      display: flex;
+      flex-direction: column;
+      max-width: 50%;
+    }
+
+    .player-title {
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    .player-artist {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .player-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      justify-content: flex-end;
+    }
+
+    audio {
+      width: 180px;
+      max-width: 50vw;
+    }
+
+    .btn-mini {
+      font-size: 11px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 0;
+      cursor: pointer;
+      background: #1DB954;
+      color: #000;
+      font-weight: 600;
+    }
+
+    /* Auth overlay */
+
+    .auth-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+    }
+
+    .auth-overlay-inner {
+      background: #111;
+      padding: 22px 20px 18px;
+      border-radius: 16px;
+      max-width: 360px;
+      text-align: center;
+      box-shadow: 0 18px 40px rgba(0,0,0,0.7);
+    }
+
+    .auth-overlay-inner h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+    }
+    .auth-overlay-inner p {
+      font-size: 13px;
+      color: var(--muted);
+      margin: 0 0 12px;
+    }
+    .auth-overlay-inner a {
+      color: var(--accent);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    /* Messages */
+
+    .msg {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .msg.error { color: #ff7a7a; }
+    .msg.success { color: #8ef18e; }
   </style>
 </head>
 <body>
-<div class="shell">
-  <header class="topbar">
-    <div class="brand">
-      <span class="isee">isee</span><span class="halo">halo</span>
-    </div>
-    <div class="pill-row">
-      <div class="pill">
-        <span class="pill-label">Credits</span>
-        <span class="pill-value" id="navCredits">0</span>
-      </div>
-      <div class="pill">
-        <span class="pill-label">Plan</span>
-        <span class="pill-value" id="navPlan">Free</span>
-      </div>
-      <span class="user-email" id="navEmail"></span>
-      <a class="link" href="#" id="signOutLink">Sign out</a>
-    </div>
-  </header>
-
-  <div class="main">
+  <div class="app-shell">
+    <!-- Sidebar -->
     <aside class="sidebar">
-      <button class="nav-btn active" data-view="home">
-        <span class="nav-btn-dot"></span> Home
-      </button>
-      <button class="nav-btn" data-view="songs">
-        <span class="nav-btn-dot"></span> Songs
-      </button>
-      <button class="nav-btn" data-view="shop">
-        <span class="nav-btn-dot"></span> Shop
-      </button>
-      <button class="nav-btn" data-view="profile">
-        <span class="nav-btn-dot"></span> Profile
-      </button>
+      <div>
+        <div class="brand">
+          <span class="isee">isee</span><span class="halo">halo</span>
+        </div>
+        <div class="tagline">Music marketplace where fans & artists share the upside.</div>
+      </div>
+
+      <nav class="nav-links">
+        <button class="nav-btn active" data-view="home">
+          <span class="icon">🏠</span> <span>Home</span>
+        </button>
+        <button class="nav-btn" data-view="songs">
+          <span class="icon">🎧</span> <span>Songs</span>
+        </button>
+        <button class="nav-btn" data-view="shop">
+          <span class="icon">🛒</span> <span>Shop</span>
+        </button>
+        <button class="nav-btn" data-view="profile">
+          <span class="icon">👤</span> <span>Profile</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div id="sidebarCredits" class="credits">Credits: —</div>
+        <button id="btnSignOut">Sign out</button>
+      </div>
     </aside>
 
-    <main class="content">
-      <!-- HOME -->
-      <section id="view-home">
-        <h1>Home</h1>
-        <p class="subhead">See what artists and fans are sharing on iseehalo.</p>
-        <div class="card">
-          <div id="feedError" class="error-text" style="display:none;"></div>
-          <div id="feedList"></div>
+    <!-- Main -->
+    <main class="main">
+      <header class="top-bar">
+        <div class="top-title" id="topTitle">Home</div>
+        <div class="user-chip" id="userChip">
+          Signed in as <strong>—</strong>
         </div>
-      </section>
+      </header>
 
-      <!-- SONGS -->
-      <section id="view-songs" style="display:none;">
-        <h1>Songs</h1>
-        <p class="subhead">Browse limited songs, stream, and see remaining copies.</p>
-        <div class="card">
-          <div id="songsError" class="error-text" style="display:none;"></div>
-          <div id="songsGrid" class="songs-grid"></div>
-        </div>
-      </section>
+      <div class="content">
+        <div id="globalMsg" class="msg"></div>
 
-      <!-- SHOP -->
-      <section id="view-shop" style="display:none;">
-        <h1>Shop</h1>
-        <p class="subhead">Spend your credits on limited products and rewards.</p>
-        <div class="card">
-          <div id="shopError" class="error-text" style="display:none;"></div>
-          <div id="shopGrid" class="shop-grid"></div>
-        </div>
-      </section>
+        <!-- HOME / FEED -->
+        <section id="view-home" class="view active">
+          <h2 style="font-size:16px;margin:0 0 10px;">Feed</h2>
+          <div id="feed" class="feed"></div>
+        </section>
 
-      <!-- PROFILE -->
-      <section id="view-profile" style="display:none;">
-        <h1>Profile</h1>
-        <p class="subhead">Manage your account, credits, and music activity.</p>
-        <div class="card">
-          <div class="profile-row">
-            <div id="profileAvatar" class="profile-avatar"></div>
+        <!-- SONGS -->
+        <section id="view-songs" class="view">
+          <h2 style="font-size:16px;margin:0 0 10px;">Songs on iseehalo</h2>
+          <p style="font-size:12px;color:var(--muted);margin-top:0;margin-bottom:8px;">
+            Browse songs available on the platform. Tap a track to start playing.
+          </p>
+          <div id="songsGrid" class="song-grid"></div>
+        </section>
+
+        <!-- SHOP -->
+        <section id="view-shop" class="view">
+          <h2 style="font-size:16px;margin:0 0 10px;">Shop</h2>
+          <p style="font-size:12px;color:var(--muted);margin-top:0;margin-bottom:8px;">
+            Buy limited song copies or physical products using your credits.
+          </p>
+
+          <div class="shop-layout">
+            <!-- Left: Song copies -->
             <div>
-              <div id="profileName" style="font-weight:600;font-size:16px;">Your name</div>
-              <div id="profileEmail" style="font-size:13px;color:var(--muted);"></div>
-              <div id="profilePlanBadge" class="badge" style="margin-top:6px;">
-                <span class="badge-dot"></span> <span id="profilePlanText">Free plan</span>
-              </div>
+              <div class="shop-section-title">Song copies</div>
+              <div id="copiesList"></div>
+            </div>
+
+            <!-- Right: Products -->
+            <div>
+              <div class="shop-section-title">Products</div>
+              <div id="productGrid" class="product-grid"></div>
             </div>
           </div>
+        </section>
 
-          <div id="profileBio" style="margin-top:10px;font-size:13px;color:var(--muted);"></div>
-
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-label">Credits</div>
-              <div class="stat-value" id="profileCredits">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Total earned</div>
-              <div class="stat-value" id="profileEarned">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">My copies</div>
-              <div class="stat-value" id="profileCopies">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">My uploads</div>
-              <div class="stat-value" id="profileUploads">0</div>
-            </div>
-          </div>
-
-          <div class="section-title">Tips</div>
-          <ul class="list-plain">
-            <li>Earn credits when people stream songs you created or copies you own.</li>
-            <li>Use credits in the Shop for exclusive items.</li>
-            <li>Upgrade to Premium in the main site for enhanced perks.</li>
-          </ul>
-        </div>
-      </section>
+        <!-- PROFILE -->
+        <section id="view-profile" class="view">
+          <h2 style="font-size:16px;margin:0 0 10px;">Profile</h2>
+          <div id="profileCard" class="profile-card"></div>
+        </section>
+      </div>
     </main>
   </div>
-</div>
 
-<!-- Supabase client (global window.supabase) -->
-<script type="module" src="/js/supabaseClient.js"></script>
-<script type="module">
-  const navCredits = document.getElementById("navCredits");
-  const navPlan = document.getElementById("navPlan");
-  const navEmail = document.getElementById("navEmail");
-  const signOutLink = document.getElementById("signOutLink");
+  <!-- Player bar -->
+  <div class="player-bar" id="playerBar" style="display:none;">
+    <div class="player-meta">
+      <div class="player-title" id="playerTitle">—</div>
+      <div class="player-artist" id="playerArtist">—</div>
+    </div>
+    <div class="player-controls">
+      <audio id="audioPlayer" controls></audio>
+      <button class="btn-mini" id="playerStop">Stop</button>
+    </div>
+  </div>
 
-  const feedError = document.getElementById("feedError");
-  const feedList = document.getElementById("feedList");
+  <!-- Auth overlay (shown if no session) -->
+  <div class="auth-overlay" id="authOverlay" style="display:none;">
+    <div class="auth-overlay-inner">
+      <h2>Sign in to continue</h2>
+      <p>
+        To use the iseehalo web app you need an account.
+        You can sign in or create an account from the auth page.
+      </p>
+      <p>
+        <a href="/auth.html">Go to sign in / sign up →</a>
+      </p>
+    </div>
+  </div>
 
-  const songsError = document.getElementById("songsError");
-  const songsGrid = document.getElementById("songsGrid");
+  <!-- Supabase client (your existing file) -->
+  <script type="module" src="/js/supabaseClient.js"></script>
 
-  const shopError = document.getElementById("shopError");
-  const shopGrid = document.getElementById("shopGrid");
+  <!-- App logic -->
+  <script type="module">
+    const supabase = window.supabase;
+    const $ = (id) => document.getElementById(id);
 
-  const profileAvatar = document.getElementById("profileAvatar");
-  const profileName = document.getElementById("profileName");
-  const profileEmail = document.getElementById("profileEmail");
-  const profilePlanText = document.getElementById("profilePlanText");
-  const profileCredits = document.getElementById("profileCredits");
-  const profileEarned = document.getElementById("profileEarned");
-  const profileCopies = document.getElementById("profileCopies");
-  const profileUploads = document.getElementById("profileUploads");
-  const profileBio = document.getElementById("profileBio");
+    const authOverlay = $("authOverlay");
+    const userChip = $("userChip");
+    const globalMsg = $("globalMsg");
+    const sidebarCredits = $("sidebarCredits");
+    const btnSignOut = $("btnSignOut");
+    const topTitle = $("topTitle");
 
-  function showError(elem, msg) {
-    elem.style.display = "block";
-    elem.textContent = msg;
-  }
-  function clearError(elem) {
-    elem.style.display = "none";
-    elem.textContent = "";
-  }
+    const feedEl = $("feed");
+    const songsGrid = $("songsGrid");
+    const copiesList = $("copiesList");
+    const productGrid = $("productGrid");
+    const profileCard = $("profileCard");
 
-  function formatDate(ts) {
-    if (!ts) return "";
-    const d = new Date(ts);
-    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  }
+    const playerBar = $("playerBar");
+    const audioPlayer = $("audioPlayer");
+    const playerTitle = $("playerTitle");
+    const playerArtist = $("playerArtist");
+    const playerStop = $("playerStop");
 
-  // copy price logic – mirror get_copy_price() in SQL
-  function computeCopyPrice(streamCount) {
-    const s = streamCount || 0;
-    if (s < 50) return 5;
-    if (s < 200) return 10;
-    return 20;
-  }
+    let currentSession = null;
+    let currentUserRow = null;
+    let songsById = new Map();
 
-  // ---- NAV ----
-  const navButtons = document.querySelectorAll(".nav-btn");
-  navButtons.forEach(btn => {
-    btn.addEventListener("click", () => {
-      const view = btn.dataset.view;
-      navButtons.forEach(b => b.classList.toggle("active", b === btn));
-      document.querySelectorAll("main section").forEach(sec => {
-        sec.style.display = sec.id === "view-" + view ? "block" : "none";
+    function showGlobalMsg(text, kind = "") {
+      globalMsg.textContent = text || "";
+      globalMsg.className = "msg" + (kind ? " " + kind : "");
+    }
+
+    function setView(view) {
+      document.querySelectorAll("section.view").forEach(sec => {
+        sec.classList.toggle("active", sec.id === "view-" + view);
       });
-    });
-  });
+      document.querySelectorAll(".nav-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.view === view);
+      });
+      const labelMap = { home: "Home", songs: "Songs", shop: "Shop", profile: "Profile" };
+      topTitle.textContent = labelMap[view] || "iseehalo";
+    }
 
-  // ---- PROFILE ----
-  async function loadProfile(userId, email) {
-    try {
-      const { data, error } = await window.supabase
+    function initNav() {
+      document.querySelectorAll(".nav-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const v = btn.dataset.view;
+          setView(v);
+        });
+      });
+    }
+
+    function initPlayer() {
+      playerStop.addEventListener("click", () => {
+        audioPlayer.pause();
+        audioPlayer.currentTime = 0;
+      });
+    }
+
+    function startPlayingSong(song) {
+      if (!song || !song.audio_url) return;
+      audioPlayer.src = song.audio_url;
+      playerTitle.textContent = song.title || "Untitled";
+      playerArtist.textContent = song.artist || "Unknown artist";
+      playerBar.style.display = "flex";
+      audioPlayer.play().catch(err => {
+        console.error("Audio play failed:", err);
+      });
+    }
+
+    async function loadProfile(user) {
+      const { data, error } = await supabase
         .from("users")
-        .select("username, profile_picture, bio, credits, total_earned, is_premium")
-        .eq("id", userId)
+        .select("email, username, credits, total_earned, profile_picture, bio, is_premium")
+        .eq("id", user.id)
         .maybeSingle();
 
       if (error) {
-        console.error("profile error:", error);
+        console.error("Profile load error:", error);
+        showGlobalMsg("Could not load profile.", "error");
         return;
       }
+      currentUserRow = data;
 
-      const row = data || {};
-      const name = row.username || email || "iseehalo user";
+      const initials = (data.username || data.email || "?")
+        .split(" ")[0]
+        .slice(0, 2)
+        .toUpperCase();
 
-      profileName.textContent = name;
-      profileEmail.textContent = email || "";
-      profileCredits.textContent = row.credits ?? 0;
-      profileEarned.textContent = row.total_earned ?? 0;
-      profileBio.textContent = row.bio || "";
+      const avatarStyle = data.profile_picture
+        ? `background-image:url('${data.profile_picture}');`
+        : "";
 
-      const avatarUrl = row.profile_picture;
-      if (avatarUrl) profileAvatar.style.backgroundImage = `url("${avatarUrl}")`;
-      else profileAvatar.style.backgroundImage = "none";
+      const premiumBadge = data.is_premium
+        ? `<div class="badge-premium">
+             <span class="dot"></span>
+             Premium member
+           </div>`
+        : `<div class="badge-premium" style="opacity:.6;">
+             <span class="dot" style="background:#555;"></span>
+             Free tier
+           </div>`;
 
-      const premium = row.is_premium === true;
-      profilePlanText.textContent = premium ? "Premium plan" : "Free plan";
-      navPlan.textContent = premium ? "Premium" : "Free";
-      navCredits.textContent = row.credits ?? 0;
-    } catch (err) {
-      console.error("loadProfile exception:", err);
+      profileCard.innerHTML = `
+        <div class="profile-header">
+          <div class="profile-avatar" style="${avatarStyle}">
+            ${avatarStyle ? "" : initials}
+          </div>
+          <div>
+            <div class="profile-name">${data.username || "Unnamed user"}</div>
+            <div class="profile-email">${data.email || ""}</div>
+            ${premiumBadge}
+          </div>
+        </div>
+        <div class="profile-stats">
+          <div>
+            <span>Credits</span>
+            <strong>${Number(data.credits ?? 0).toFixed(2)}</strong>
+          </div>
+          <div>
+            <span>Total earned</span>
+            <strong>${Number(data.total_earned ?? 0).toFixed(2)}</strong>
+          </div>
+        </div>
+        <div class="profile-bio">
+          ${data.bio || "No bio yet. You can manage your profile from the mobile app."}
+        </div>
+        <div class="profile-actions">
+          <button class="btn-outline accent" onclick="window.location.href='/dashboard'">
+            Manage subscription
+          </button>
+        </div>
+      `;
+
+      sidebarCredits.textContent = "Credits: " + Number(data.credits ?? 0).toFixed(2);
     }
 
-    // copies count
-    try {
-      const { count } = await window.supabase
-        .from("song_copies")
-        .select("id", { head: true, count: "exact" })
-        .eq("owner", userId);
-      profileCopies.textContent = count ?? 0;
-    } catch (err) {
-      console.error("copies count error:", err);
-    }
+    async function loadSongs() {
+      songsGrid.innerHTML = "Loading songs…";
 
-    // uploads count
-    try {
-      const { count } = await window.supabase
+      const { data, error } = await supabase
         .from("songs")
-        .select("id", { head: true, count: "exact" })
-        .eq("creator_id", userId);
-      profileUploads.textContent = count ?? 0;
-    } catch (err) {
-      console.error("uploads count error:", err);
-    }
-  }
-
-  // ---- FEED ----
-  async function loadFeed() {
-    clearError(feedError);
-    feedList.innerHTML = "Loading feed…";
-
-    try {
-      const { data, error } = await window.supabase
-        .from("posts")
-        .select(`
-          id,
-          caption,
-          media_url,
-          media_type,
-          created_at,
-          user_id,
-          users!posts_user_id_fkey (
-            username,
-            profile_picture
-          )
-        `)
-        .order("created_at", { ascending: false })
-        .limit(40);
-
-      if (error) {
-        console.error("feed error:", error);
-        showError(feedError, error.message || "Could not load feed.");
-        feedList.innerHTML = "";
-        return;
-      }
-
-      const posts = data || [];
-      if (!posts.length) {
-        feedList.innerHTML = '<div class="feed-empty">No posts yet. When artists share, they’ll appear here.</div>';
-        return;
-      }
-
-      feedList.innerHTML = "";
-      posts.forEach(post => {
-        const wrap = document.createElement("div");
-        wrap.className = "post";
-
-        const user = post.users || {};
-        const displayName = user.username || "Anon user";
-        const avatarUrl = user.profile_picture || "";
-
-        const avatar = document.createElement("div");
-        avatar.className = "post-avatar";
-        if (avatarUrl) avatar.style.backgroundImage = `url("${avatarUrl}")`;
-
-        const right = document.createElement("div");
-        const header = document.createElement("div");
-        header.className = "post-header";
-
-        const nameEl = document.createElement("div");
-        nameEl.className = "post-name";
-        nameEl.textContent = displayName;
-
-        const timeEl = document.createElement("div");
-        timeEl.className = "post-time";
-        timeEl.textContent = formatDate(post.created_at);
-
-        header.appendChild(nameEl);
-        header.appendChild(timeEl);
-
-        const captionEl = document.createElement("div");
-        captionEl.className = "post-caption";
-        captionEl.textContent = post.caption || "";
-
-        right.appendChild(header);
-        right.appendChild(captionEl);
-
-        if (post.media_url) {
-          const mediaWrap = document.createElement("div");
-          mediaWrap.className = "post-media";
-
-          if (post.media_type === "video") {
-            const vid = document.createElement("video");
-            vid.src = post.media_url;
-            vid.controls = true;
-            mediaWrap.appendChild(vid);
-          } else {
-            const img = document.createElement("img");
-            img.src = post.media_url;
-            img.alt = "";
-            mediaWrap.appendChild(img);
-          }
-          right.appendChild(mediaWrap);
-        }
-
-        wrap.appendChild(avatar);
-        wrap.appendChild(right);
-        feedList.appendChild(wrap);
-      });
-    } catch (err) {
-      console.error("feed exception:", err);
-      showError(feedError, err.message || String(err) || "Could not load feed.");
-      feedList.innerHTML = "";
-    }
-  }
-
-  // ---- SONGS ----
-  async function loadSongs() {
-    clearError(songsError);
-    songsGrid.innerHTML = "Loading songs…";
-
-    try {
-      // Prefer the view if it exists
-      let res = await window.supabase
-        .from("songs_with_remaining")
-        .select("id, title, artist, cover_url, stream_count, remaining_copies")
+        .select("id, title, artist, audio_url, cover_url, stream_count, created_at")
         .order("created_at", { ascending: false });
 
-      // If the view doesn't exist, fall back to songs table
-      if (res.error && /relation .* does not exist/i.test(res.error.message)) {
-        res = await window.supabase
-          .from("songs")
-          .select("id, title, artist, cover_url, stream_count")
-          .order("created_at", { ascending: false });
-      }
-
-      const { data, error } = res;
       if (error) {
-        console.error("songs error:", error);
-        showError(songsError, error.message || "Could not load songs.");
-        songsGrid.innerHTML = "";
+        console.error("Load songs error:", error);
+        songsGrid.textContent = "Could not load songs.";
         return;
       }
 
-      const songs = data || [];
-      if (!songs.length) {
-        songsGrid.innerHTML = '<div class="feed-empty">No songs have been uploaded yet.</div>';
+      songsById.clear();
+      data.forEach(s => songsById.set(s.id, s));
+
+      if (!data.length) {
+        songsGrid.textContent = "No songs yet.";
         return;
       }
 
       songsGrid.innerHTML = "";
-      songs.forEach(s => {
+      data.forEach(song => {
         const card = document.createElement("div");
         card.className = "song-card";
 
-        const cover = document.createElement("div");
-        cover.className = "song-cover";
-        if (s.cover_url) cover.style.backgroundImage = `url("${s.cover_url}")`;
+        const coverStyle = song.cover_url
+          ? `background-image:url('${song.cover_url}');`
+          : "";
 
-        const right = document.createElement("div");
+        card.innerHTML = `
+          <div class="song-cover" style="${coverStyle}"></div>
+          <div class="song-meta">
+            <div>
+              <div class="song-title">${song.title || "Untitled"}</div>
+              <div class="song-artist">${song.artist || "Unknown artist"}</div>
+              <div class="song-streams">${song.stream_count || 0} streams</div>
+            </div>
+            <button class="song-play-btn">Play</button>
+          </div>
+        `;
 
-        const title = document.createElement("div");
-        title.className = "song-title";
-        title.textContent = s.title || "Untitled track";
-
-        const artist = document.createElement("div");
-        artist.className = "song-artist";
-        artist.textContent = s.artist || "Unknown artist";
-
-        const meta = document.createElement("div");
-        meta.className = "song-meta";
-        const remaining = typeof s.remaining_copies === "number"
-          ? s.remaining_copies
-          : null;
-        meta.textContent =
-          `Streams: ${s.stream_count ?? 0}` +
-          (remaining !== null ? ` • Remaining copies: ${remaining}` : "");
-
-        const bottom = document.createElement("div");
-        bottom.className = "song-bottom";
-
-        const priceEl = document.createElement("div");
-        priceEl.className = "song-price";
-        const price = computeCopyPrice(s.stream_count);
-        priceEl.textContent = `${price} credits / copy`;
-
-        const btn = document.createElement("button");
-        btn.className = "song-btn";
-        btn.textContent = "View";
-        // Later you can hook this to open a song detail / player
-        btn.addEventListener("click", () => {
-          alert(`Song: ${s.title} — this is where a detail/player view would go.`);
+        card.querySelector(".song-play-btn").addEventListener("click", () => {
+          startPlayingSong(song);
         });
-
-        bottom.appendChild(priceEl);
-        bottom.appendChild(btn);
-
-        right.appendChild(title);
-        right.appendChild(artist);
-        right.appendChild(meta);
-        right.appendChild(bottom);
-
-        card.appendChild(cover);
-        card.appendChild(right);
 
         songsGrid.appendChild(card);
       });
-    } catch (err) {
-      console.error("songs exception:", err);
-      showError(songsError, err.message || String(err) || "Could not load songs.");
-      songsGrid.innerHTML = "";
     }
-  }
 
-  // ---- SHOP ----
-  async function loadShop() {
-    clearError(shopError);
-    shopGrid.innerHTML = "Loading products…";
+    async function loadFeed() {
+      feedEl.innerHTML = "Loading feed…";
 
-    try {
-      const { data, error } = await window.supabase
-        .from("products")
-        .select("id, name, description, price_cents, in_stock, image_url")
-        .order("created_at", { ascending: false });
+      const { data, error } = await supabase
+        .from("posts")
+        .select("id, user_id, caption, created_at, media_url, media_type, song_id")
+        .order("created_at", { ascending: false })
+        .limit(30);
 
       if (error) {
-        console.error("shop error:", error);
-        showError(shopError, error.message || "Could not load products.");
-        shopGrid.innerHTML = "";
+        console.error("Feed error:", error);
+        feedEl.textContent = "Could not load feed.";
         return;
       }
 
-      const items = data || [];
-      if (!items.length) {
-        shopGrid.innerHTML = '<div class="feed-empty">No products yet. Check back soon!</div>';
+      if (!data.length) {
+        feedEl.textContent = "No posts yet.";
         return;
       }
 
-      shopGrid.innerHTML = "";
-      items.forEach(p => {
+      feedEl.innerHTML = "";
+      data.forEach(post => {
+        const div = document.createElement("div");
+        div.className = "card";
+
+        const created = new Date(post.created_at);
+        const dateStr = created.toLocaleDateString();
+
+        // Basic avatar (just first letters of user_id or 'U')
+        const avatarText = (post.user_id || "U").slice(0, 2).toUpperCase();
+
+        let mediaHtml = "";
+        if (post.media_url) {
+          if (post.media_type === "video") {
+            mediaHtml = `<video src="${post.media_url}" style="width:100%;border-radius:10px;margin-top:6px;" controls muted></video>`;
+          } else {
+            mediaHtml = `<img src="${post.media_url}" alt="" style="width:100%;border-radius:10px;margin-top:6px;object-fit:cover;max-height:260px;" />`;
+          }
+        }
+
+        // If post is linked to a song, we can show a hint & play if we have that song in cache
+        let songTagHtml = "";
+        const song = post.song_id ? songsById.get(post.song_id) : null;
+        if (song) {
+          songTagHtml = `
+            <div class="post-tag-song">
+              🎵 ${song.title || "Untitled"} – ${song.artist || "Unknown artist"}
+              <button class="btn-mini" data-song-id="${song.id}" style="margin-left:6px;">Play</button>
+            </div>
+          `;
+        }
+
+        div.innerHTML = `
+          <div class="post-header">
+            <div class="avatar">${avatarText}</div>
+            <div class="post-meta">
+              <div>User ${post.user_id?.slice(0,8) || "unknown"}</div>
+              <div>${dateStr}</div>
+            </div>
+          </div>
+          <div class="post-caption">${post.caption || ""}</div>
+          ${mediaHtml}
+          ${songTagHtml}
+        `;
+
+        // Attach play handler if there's a song button
+        if (song) {
+          const btn = div.querySelector("button[data-song-id]");
+          if (btn) {
+            btn.addEventListener("click", () => startPlayingSong(song));
+          }
+        }
+
+        feedEl.appendChild(div);
+      });
+    }
+
+    async function loadShop() {
+      // SONG COPIES (for Shop)
+      copiesList.innerHTML = "Loading song copies…";
+
+      const { data: copies, error: copiesErr } = await supabase
+        .from("song_copies")
+        .select("id, song_id, listing_price, is_listed, created_at, owner")
+        .eq("is_listed", true)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (copiesErr) {
+        console.error("Copies error:", copiesErr);
+        copiesList.textContent = "Could not load song copies.";
+      } else if (!copies.length) {
+        copiesList.textContent = "No song copies listed yet.";
+      } else {
+        copiesList.innerHTML = "";
+        copies.forEach(copy => {
+          const song = songsById.get(copy.song_id);
+          const div = document.createElement("div");
+          div.className = "copy-card";
+
+          const title = song?.title || "Untitled";
+          const artist = song?.artist || "Unknown artist";
+
+          div.innerHTML = `
+            <div class="copy-song">${title}</div>
+            <div class="copy-meta">${artist}</div>
+            <div class="copy-meta">Price: <strong>${copy.listing_price ?? 0} credits</strong></div>
+            <button class="copy-cta disabled">Buy (web coming soon)</button>
+          `;
+          copiesList.appendChild(div);
+        });
+      }
+
+      // PRODUCTS
+      productGrid.innerHTML = "Loading products…";
+
+      const { data: products, error: productsErr } = await supabase
+        .from("products")
+        .select("id, name, description, price_cents, in_stock, image_url")
+        .eq("in_stock", true)
+        .order("created_at", { ascending: false });
+
+      if (productsErr) {
+        console.error("Products error:", productsErr);
+        productGrid.textContent = "Could not load products.";
+        return;
+      }
+
+      if (!products.length) {
+        productGrid.textContent = "No products available.";
+        return;
+      }
+
+      productGrid.innerHTML = "";
+      products.forEach(p => {
         const card = document.createElement("div");
         card.className = "product-card";
 
-        if (p.image_url) {
-          const imgWrap = document.createElement("div");
-          imgWrap.className = "product-image";
-          const img = document.createElement("img");
-          img.src = p.image_url;
-          img.alt = p.name || "";
-          imgWrap.appendChild(img);
-          card.appendChild(imgWrap);
-        }
+        const imgUrl = p.image_url || "";
 
-        const nameEl = document.createElement("div");
-        nameEl.className = "product-name";
-        nameEl.textContent = p.name;
+        card.innerHTML = `
+          ${imgUrl ? `<img src="${imgUrl}" alt="${p.name}" class="product-thumb" />` : `<div class="product-thumb"></div>`}
+          <div class="product-name">${p.name}</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${p.description || ""}</div>
+          <div class="product-price" style="margin-top:4px;">${p.price_cents ?? 0} credits</div>
+          <button class="product-cta disabled">Buy (web coming soon)</button>
+        `;
 
-        const descEl = document.createElement("div");
-        descEl.className = "product-description";
-        descEl.textContent = p.description;
-
-        const bottom = document.createElement("div");
-        bottom.className = "product-bottom";
-
-        const price = document.createElement("div");
-        price.className = "price";
-        const cents = p.price_cents ?? 0;
-        const credits = cents / 100;
-        price.textContent = `${credits.toFixed(2)} credits`;
-
-        const btn = document.createElement("button");
-        btn.className = "small-btn";
-        btn.textContent = p.in_stock === false ? "Out of stock" : "Redeem";
-        btn.disabled = p.in_stock === false;
-        // You can wire this to call buy_product() later
-
-        bottom.appendChild(price);
-        bottom.appendChild(btn);
-
-        card.appendChild(nameEl);
-        card.appendChild(descEl);
-        card.appendChild(bottom);
-
-        shopGrid.appendChild(card);
+        productGrid.appendChild(card);
       });
-    } catch (err) {
-      console.error("shop exception:", err);
-      showError(shopError, err.message || String(err) || "Could not load products.");
-      shopGrid.innerHTML = "";
-    }
-  }
-
-  // ---- AUTH + INIT ----
-  async function init() {
-    const { data, error } = await window.supabase.auth.getSession();
-    if (error) {
-      console.error("auth getSession error:", error);
-    }
-    const session = data?.session || null;
-    if (!session) {
-      window.location.href = "/auth.html?from=app";
-      return;
     }
 
-    const user = session.user;
-    const userId = user.id;
-    const email = user.email;
-
-    navEmail.textContent = email || "";
-    await loadProfile(userId, email);
-    await loadFeed();
-    await loadSongs();
-    await loadShop();
-  }
-
-  signOutLink.addEventListener("click", async (e) => {
-    e.preventDefault();
-    try {
-      await window.supabase.auth.signOut();
-    } finally {
-      window.location.href = "/auth.html";
+    async function loadEverything(user) {
+      showGlobalMsg("Loading your data…");
+      await Promise.all([
+        loadProfile(user),
+        loadSongs(),
+      ]);
+      // feed + shop depend on songsById a bit, so call after
+      await Promise.all([
+        loadFeed(),
+        loadShop(),
+      ]);
+      showGlobalMsg("");
     }
-  });
 
-  init();
-</script>
+    async function initAuth() {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error("Auth session error:", error);
+        authOverlay.style.display = "flex";
+        return null;
+      }
+      const session = data?.session || null;
+
+      if (!session) {
+        authOverlay.style.display = "flex";
+        return null;
+      }
+
+      authOverlay.style.display = "none";
+      currentSession = session;
+
+      const user = session.user;
+      userChip.innerHTML = `Signed in as <strong>${user.email}</strong>`;
+
+      return user;
+    }
+
+    async function initApp() {
+      initNav();
+      initPlayer();
+
+      const user = await initAuth();
+      if (!user) return;
+
+      await loadEverything(user);
+
+      btnSignOut.addEventListener("click", async () => {
+        await supabase.auth.signOut();
+        location.href = "/auth.html";
+      });
+
+      // react to auth changes
+      supabase.auth.onAuthStateChange(async (_event, session) => {
+        if (!session) {
+          authOverlay.style.display = "flex";
+        } else {
+          authOverlay.style.display = "none";
+          currentSession = session;
+          userChip.innerHTML = `Signed in as <strong>${session.user.email}</strong>`;
+          await loadEverything(session.user);
+        }
+      });
+    }
+
+    initApp();
+  </script>
 </body>
 </html>

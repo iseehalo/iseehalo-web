@@ -2,960 +2,777 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>iseehalo — Web Player</title>
+  <title>iseehalo — Web app</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #050505;
-      --card: #111;
-      --card-soft: #151515;
-      --border: #222;
-      --text: #f9f9f9;
-      --muted: #a0a0a0;
+      --bg: #000000;
+      --bg-elevated: #0f0f0f;
+      --bg-card: #111111;
       --accent: #1db954;
       --halo: #fff59e;
-      --danger: #ff7a7a;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
-      background: radial-gradient(circle at top, #1b1b1b 0, #050505 55%);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
+      --muted: #aaaaaa;
+      --border: #202020;
+      --danger: #ff6b6b;
     }
 
-    /* Layout */
-    .app-shell {
-      display: grid;
-      grid-template-columns: 220px minmax(0, 1fr);
-      grid-template-rows: auto minmax(0, 1fr);
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
       min-height: 100vh;
+      background: radial-gradient(circle at top, #202020 0, #000 45%);
+      color: #ffffff;
+      font-family: "Poppins", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
-    @media (max-width: 900px) {
-      .app-shell {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto auto minmax(0, 1fr);
-      }
+
+    .shell {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
 
     /* Top bar */
     .topbar {
-      grid-column: 1 / -1;
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 10px 18px;
-      border-bottom: 1px solid var(--border);
-      background: rgba(0, 0, 0, 0.85);
+      border-bottom: 1px solid #151515;
+      background: rgba(0,0,0,0.92);
       backdrop-filter: blur(10px);
-      position: sticky;
-      top: 0;
-      z-index: 20;
     }
     .brand {
+      font-size: 22px;
       font-weight: 700;
       letter-spacing: -0.4px;
-      font-size: 22px;
-    }
-    .brand .isee { color: #fff; }
-    .brand .halo { color: var(--halo); }
-    .top-right {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 13px;
-    }
-    .chip {
-      border-radius: 999px;
-      padding: 6px 10px;
-      background: #181818;
-      border: 1px solid #2a2a2a;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .chip span.label {
-      color: var(--muted);
-      font-size: 11px;
-    }
-    .chip span.value {
-      font-weight: 600;
-    }
-    button.text-link {
-      background: none;
-      border: none;
-      color: var(--muted);
-      font-size: 12px;
-      cursor: pointer;
-      padding: 4px 6px;
-    }
-    button.text-link:hover {
-      color: #fff;
-    }
-
-    /* Sidebar nav */
-    .sidebar {
-      border-right: 1px solid var(--border);
-      background: #050505;
-      padding: 14px 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    @media (max-width: 900px) {
-      .sidebar {
-        flex-direction: row;
-        justify-content: space-around;
-        border-right: none;
-        border-bottom: 1px solid var(--border);
-      }
-    }
-    .nav-btn {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 8px 10px;
-      border-radius: 10px;
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      font-size: 14px;
-      cursor: pointer;
-      width: 100%;
-      text-align: left;
     }
-    .nav-btn span.dot {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: transparent;
-    }
-    .nav-btn.active {
-      background: linear-gradient(90deg, #202020, #101010);
-      color: #fff;
-      font-weight: 600;
-    }
-    .nav-btn.active span.dot {
-      background: var(--accent);
-    }
-    .nav-btn:hover {
-      background: #151515;
-      color: #fff;
-    }
+    .isee { color: #fff; }
+    .halo { color: var(--halo); }
 
-    /* Main content */
-    .main {
-      padding: 14px 18px 70px;
-      overflow-y: auto;
-      max-height: calc(100vh - 48px);
+    .pill-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
     }
-    .section-title {
-      font-size: 18px;
-      font-weight: 600;
-      margin: 0 0 8px;
+    .pill {
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: #111;
+      border: 1px solid #222;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
-    .section-sub {
+    .pill-label { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+    .pill-value { font-weight: 600; }
+
+    .user-email {
       font-size: 13px;
       color: var(--muted);
-      margin-bottom: 14px;
     }
-
-    /* Cards / grids */
-    .card {
-      background: var(--card);
-      border-radius: 16px;
-      padding: 14px 14px 12px;
-      border: 1px solid rgba(255,255,255,0.03);
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-      gap: 12px;
-    }
-    .flex {
-      display: flex;
-    }
-    .flex-between {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .badge {
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      padding: 2px 6px;
-      border-radius: 999px;
-      background: #202020;
-      color: var(--muted);
-    }
-    .badge.accent {
-      background: rgba(29, 185, 84, 0.14);
+    .link {
       color: var(--accent);
+      text-decoration: none;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .link:hover { text-decoration: underline; }
+
+    /* Layout */
+    .main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 220px minmax(0, 1fr);
+      min-height: 0;
     }
 
-    /* Buttons */
-    .btn-sm {
-      font-size: 12px;
-      padding: 6px 10px;
+    @media (max-width: 768px) {
+      .main {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        flex-direction: row;
+        border-right: none;
+        border-bottom: 1px solid #151515;
+        padding: 8px 10px;
+        overflow-x: auto;
+      }
+      .sidebar button {
+        flex: 1;
+        text-align: center;
+      }
+    }
+
+    .sidebar {
+      background: #050505;
+      border-right: 1px solid #151515;
+      padding: 14px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .nav-btn {
       border-radius: 999px;
       border: none;
+      background: transparent;
+      color: var(--muted);
+      padding: 8px 14px;
+      text-align: left;
+      font-size: 14px;
       cursor: pointer;
-      background: #1f1f1f;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+
+    .nav-btn-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: transparent;
+    }
+
+    .nav-btn.active {
+      background: #161616;
       color: #fff;
     }
-    .btn-sm.primary {
-      background: linear-gradient(90deg, #ffd700, #ffcc33);
-      color: #000;
-      font-weight: 600;
+    .nav-btn.active .nav-btn-dot {
+      background: var(--accent);
     }
-    .btn-sm:disabled {
-      opacity: 0.6;
-      cursor: default;
+
+    .content {
+      padding: 18px;
+      overflow-y: auto;
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      font-size: 22px;
+    }
+
+    .subhead {
+      margin: 0 0 16px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .card {
+      background: var(--bg-card);
+      border-radius: 14px;
+      border: 1px solid #191919;
+      padding: 14px 16px;
+      margin-bottom: 16px;
+    }
+
+    .error-text {
+      color: var(--danger);
+      font-size: 14px;
     }
 
     /* Feed */
-    .feed-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .post {
-      background: var(--card-soft);
-      border-radius: 16px;
-      padding: 10px 12px;
-      border: 1px solid rgba(255,255,255,0.03);
-    }
-    .post-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-    }
-    .avatar-circle {
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #444, #888);
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      text-transform: uppercase;
-    }
-    .post-user {
-      font-size: 13px;
-      font-weight: 500;
-    }
-    .post-meta {
-      font-size: 11px;
+    .feed-empty {
       color: var(--muted);
-    }
-    .post-body {
       font-size: 14px;
-      margin-bottom: 6px;
-    }
-    .post-song {
-      margin-top: 6px;
-      padding: 6px 8px;
-      border-radius: 10px;
-      background: #181818;
-      font-size: 12px;
-    }
-    .post-actions {
-      display: flex;
-      gap: 10px;
-      margin-top: 6px;
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .post-actions button {
-      background: none;
-      border: none;
-      color: inherit;
-      cursor: pointer;
-      padding: 3px 0;
-    }
-    .post-actions button:hover {
-      color: #fff;
     }
 
-    /* Shop items */
-    .song-card, .product-card {
-      background: var(--card-soft);
+    .post {
+      display: grid;
+      grid-template-columns: 56px minmax(0, 1fr);
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid #181818;
+    }
+    .post:last-child { border-bottom: none; }
+
+    .post-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 999px;
+      background-position: center;
+      background-size: cover;
+      background-color: #333;
+    }
+
+    .post-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .post-name {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .post-time {
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .post-caption {
+      font-size: 14px;
+      margin-top: 4px;
+    }
+    .post-media {
+      margin-top: 8px;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #222;
+      max-height: 280px;
+    }
+    .post-media img,
+    .post-media video {
+      width: 100%;
+      display: block;
+      object-fit: cover;
+    }
+
+    /* Shop */
+    .shop-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 12px;
+    }
+    .product-card {
+      background: #101010;
       border-radius: 14px;
-      padding: 10px 10px 8px;
-      border: 1px solid #1f1f1f;
+      border: 1px solid #1c1c1c;
+      padding: 12px 12px 10px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
-    }
-    .song-title, .product-name {
+      gap: 6px;
       font-size: 13px;
-      font-weight: 500;
     }
-    .song-artist, .product-desc {
-      font-size: 11px;
-      color: var(--muted);
+    .product-name {
+      font-weight: 600;
+      font-size: 14px;
     }
-    .song-meta, .product-meta {
-      font-size: 11px;
+    .product-description {
       color: var(--muted);
+      font-size: 13px;
+    }
+    .product-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+    .price {
+      font-weight: 600;
+    }
+    .small-btn {
+      border-radius: 999px;
+      border: none;
+      background: #fff;
+      color: #000;
+      font-size: 12px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    .small-btn:disabled {
+      opacity: 0.5;
+      cursor: default;
     }
 
     /* Profile */
-    .profile-columns {
-      display: grid;
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-      gap: 14px;
+    .profile-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: center;
     }
-    @media (max-width: 900px) {
-      .profile-columns {
-        grid-template-columns: 1fr;
-      }
-    }
-    .field-label {
-      font-size: 11px;
-      color: var(--muted);
-      margin-bottom: 2px;
-    }
-    .field-value {
-      font-size: 13px;
-      font-weight: 500;
-    }
-    input.inline-input {
-      width: 100%;
-      padding: 7px 9px;
-      border-radius: 10px;
-      border: 1px solid #303030;
-      background: #111;
-      color: #fff;
-      font-size: 13px;
-      outline: none;
-    }
-    input.inline-input:focus {
-      border-color: #444;
+    .profile-avatar {
+      width: 72px;
+      height: 72px;
+      border-radius: 999px;
+      background-position: center;
+      background-size: cover;
+      background-color: #333;
+      border: 2px solid #2c2c2c;
     }
 
-    /* Helper */
-    .hint {
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: #111;
+      border: 1px solid #222;
       font-size: 11px;
-      color: var(--muted);
-      margin-top: 4px;
     }
-    .error {
-      color: var(--danger);
-      font-size: 12px;
-      margin-top: 4px;
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--accent);
     }
-    .empty {
-      font-size: 12px;
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+      font-size: 13px;
+    }
+    .stat-card {
+      background: #101010;
+      border-radius: 12px;
+      border: 1px solid #1b1b1b;
+      padding: 10px 12px;
+    }
+    .stat-label {
       color: var(--muted);
-      margin-top: 4px;
+      font-size: 11px;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .section-title {
+      font-size: 14px;
+      color: var(--muted);
+      margin: 14px 0 6px;
+    }
+    .list-plain {
+      margin: 0;
+      padding-left: 14px;
+      font-size: 13px;
+      color: var(--muted);
     }
   </style>
 </head>
 <body>
-  <div class="app-shell">
-    <!-- Top bar -->
-    <header class="topbar">
-      <div class="brand">
-        <span class="isee">isee</span><span class="halo">halo</span>
+<div class="shell">
+  <header class="topbar">
+    <div class="brand">
+      <span class="isee">isee</span><span class="halo">halo</span>
+    </div>
+    <div class="pill-row">
+      <div class="pill">
+        <span class="pill-label">Credits</span>
+        <span class="pill-value" id="navCredits">0</span>
       </div>
-      <div class="top-right">
-        <div class="chip" id="creditsChip">
-          <span class="label">Credits</span>
-          <span class="value" id="creditsValue">—</span>
-        </div>
-        <div class="chip" id="premiumChip">
-          <span class="label">Plan</span>
-          <span class="value" id="premiumValue">Free</span>
-        </div>
-        <span id="userEmail" style="font-size:12px;color:var(--muted);"></span>
-        <button class="text-link" id="btnSignAuth">Sign in</button>
-        <button class="text-link" id="btnSignOut" style="display:none;">Sign out</button>
+      <div class="pill">
+        <span class="pill-label">Plan</span>
+        <span class="pill-value" id="navPlan">Free</span>
       </div>
-    </header>
+      <span class="user-email" id="navEmail"></span>
+      <a class="link" href="#" id="signOutLink">Sign out</a>
+    </div>
+  </header>
 
-    <!-- Sidebar nav -->
-    <nav class="sidebar">
+  <div class="main">
+    <aside class="sidebar">
       <button class="nav-btn active" data-view="home">
-        <span class="dot"></span>
-        Home
+        <span class="nav-btn-dot"></span> Home
       </button>
       <button class="nav-btn" data-view="shop">
-        <span class="dot"></span>
-        Shop
+        <span class="nav-btn-dot"></span> Shop
       </button>
       <button class="nav-btn" data-view="profile">
-        <span class="dot"></span>
-        Profile
+        <span class="nav-btn-dot"></span> Profile
       </button>
-    </nav>
+    </aside>
 
-    <!-- Main content -->
-    <main class="main">
-      <!-- HOME / FEED -->
+    <main class="content">
+      <!-- HOME -->
       <section id="view-home">
-        <h2 class="section-title">Home</h2>
-        <p class="section-sub">See what artists and fans are sharing on iseehalo.</p>
-
-        <div class="card">
-          <div id="feedError" class="error" style="display:none;"></div>
-          <div id="feedEmpty" class="empty" style="display:none;">No posts yet.</div>
-          <div id="feedList" class="feed-list"></div>
+        <h1>Home</h1>
+        <p class="subhead">See what artists and fans are sharing on iseehalo.</p>
+        <div class="card" id="feedCard">
+          <div id="feedError" class="error-text" style="display:none;"></div>
+          <div id="feedList"></div>
         </div>
       </section>
 
       <!-- SHOP -->
       <section id="view-shop" style="display:none;">
-        <h2 class="section-title">Shop</h2>
-        <p class="section-sub">
-          Discover limited song copies and products you can buy with your credits.
-        </p>
-
-        <div class="card" style="margin-bottom:12px;">
-          <div class="flex-between" style="margin-bottom:6px;">
-            <div>
-              <div class="badge accent">Song copies</div>
-              <div class="hint">Own a share of the songs you love.</div>
-            </div>
-          </div>
-          <div id="songCopiesEmpty" class="empty" style="display:none;">No copies listed right now.</div>
-          <div id="songCopiesGrid" class="grid"></div>
-        </div>
-
+        <h1>Shop</h1>
+        <p class="subhead">Spend your credits on limited products and rewards.</p>
         <div class="card">
-          <div class="flex-between" style="margin-bottom:6px;">
-            <div>
-              <div class="badge accent">Products</div>
-              <div class="hint">Physical items and drops.</div>
-            </div>
-          </div>
-          <div id="productsEmpty" class="empty" style="display:none;">No products available yet.</div>
-          <div id="productsGrid" class="grid"></div>
+          <div id="shopError" class="error-text" style="display:none;"></div>
+          <div id="shopGrid" class="shop-grid"></div>
         </div>
       </section>
 
       <!-- PROFILE -->
       <section id="view-profile" style="display:none;">
-        <h2 class="section-title">Profile</h2>
-        <p class="section-sub">View your credits, copies, and uploaded songs.</p>
-
-        <div id="profileGate" class="card" style="margin-bottom:12px; display:none;">
-          <p class="empty">
-            You need to sign in to see your profile.
-          </p>
-          <button class="btn-sm primary" id="goAuthFromProfile">Sign in / Create account</button>
-        </div>
-
-        <div id="profileContent" style="display:none;">
-          <div class="profile-columns">
-            <!-- Left: basic info -->
-            <div class="card">
-              <div class="flex-between" style="margin-bottom:6px;">
-                <div>
-                  <div class="badge accent">Account</div>
-                </div>
-              </div>
-              <div style="display:grid;gap:8px;">
-                <div>
-                  <div class="field-label">Email</div>
-                  <div class="field-value" id="profileEmail">—</div>
-                </div>
-                <div>
-                  <div class="field-label">Username</div>
-                  <input id="profileUsername" class="inline-input" placeholder="Add a username" />
-                  <div class="hint">This is what others will see on posts.</div>
-                  <div id="profileSaveMsg" class="hint"></div>
-                </div>
-                <div>
-                  <div class="field-label">Credits</div>
-                  <div class="field-value" id="profileCredits">—</div>
-                </div>
-                <div>
-                  <div class="field-label">Total earned</div>
-                  <div class="field-value" id="profileTotalEarned">—</div>
-                </div>
-                <div>
-                  <div class="field-label">Premium</div>
-                  <div class="field-value" id="profilePremium">Free</div>
-                </div>
-              </div>
-              <div style="margin-top:10px;">
-                <button class="btn-sm primary" id="saveProfileBtn">Save profile</button>
-              </div>
-            </div>
-
-            <!-- Right: stats / quick view -->
-            <div class="card">
-              <div class="badge accent">Overview</div>
-              <div class="hint" style="margin-top:4px;">
-                Quick glance at your holdings.
-              </div>
-              <div style="margin-top:10px;">
-                <div class="field-label">Purchased copies</div>
-                <div class="field-value" id="profileCopyCount">0</div>
-              </div>
-              <div style="margin-top:6px;">
-                <div class="field-label">Uploaded songs</div>
-                <div class="field-value" id="profileSongCount">0</div>
+        <h1>Profile</h1>
+        <p class="subhead">Manage your account, credits, and music activity.</p>
+        <div class="card">
+          <div class="profile-row">
+            <div id="profileAvatar" class="profile-avatar"></div>
+            <div>
+              <div id="profileName" style="font-weight:600;font-size:16px;">Your name</div>
+              <div id="profileEmail" style="font-size:13px;color:var(--muted);"></div>
+              <div id="profilePlanBadge" class="badge" style="margin-top:6px;">
+                <span class="badge-dot"></span> <span id="profilePlanText">Free plan</span>
               </div>
             </div>
           </div>
 
-          <div class="card" style="margin-top:14px;">
-            <div class="flex-between" style="margin-bottom:6px;">
-              <div class="badge">My copies</div>
+          <div id="profileBio" style="margin-top:10px;font-size:13px;color:var(--muted);"></div>
+
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-label">Credits</div>
+              <div class="stat-value" id="profileCredits">0</div>
             </div>
-            <div id="myCopiesEmpty" class="empty" style="display:none;">You don’t own any copies yet.</div>
-            <div id="myCopiesGrid" class="grid"></div>
+            <div class="stat-card">
+              <div class="stat-label">Total earned</div>
+              <div class="stat-value" id="profileEarned">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">My copies</div>
+              <div class="stat-value" id="profileCopies">0</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">My uploads</div>
+              <div class="stat-value" id="profileUploads">0</div>
+            </div>
           </div>
 
-          <div class="card" style="margin-top:12px;">
-            <div class="flex-between" style="margin-bottom:6px;">
-              <div class="badge">My uploaded songs</div>
-            </div>
-            <div id="mySongsEmpty" class="empty" style="display:none;">You haven’t uploaded any songs yet.</div>
-            <div id="mySongsGrid" class="grid"></div>
-          </div>
+          <div class="section-title">Tips</div>
+          <ul class="list-plain">
+            <li>Earn credits when people stream songs you created or copies you own.</li>
+            <li>Use credits in the Shop for exclusive items.</li>
+            <li>Upgrade to Premium in the main site for enhanced perks.</li>
+          </ul>
         </div>
       </section>
     </main>
   </div>
+</div>
 
-  <!-- Supabase client (ES module that sets window.supabase) -->
-  <script type="module" src="/js/supabaseClient.js"></script>
+<!-- Supabase client (your global window.supabase) -->
+<script type="module" src="/js/supabaseClient.js"></script>
+<script type="module">
+  const navCredits = document.getElementById("navCredits");
+  const navPlan = document.getElementById("navPlan");
+  const navEmail = document.getElementById("navEmail");
+  const signOutLink = document.getElementById("signOutLink");
 
-  <script type="module">
-    document.addEventListener('DOMContentLoaded', () => {
-      const supabase = window.supabase;
-      if (!supabase) {
-        console.error("Supabase client missing");
+  const feedError = document.getElementById("feedError");
+  const feedList = document.getElementById("feedList");
+
+  const shopError = document.getElementById("shopError");
+  const shopGrid = document.getElementById("shopGrid");
+
+  const profileAvatar = document.getElementById("profileAvatar");
+  const profileName = document.getElementById("profileName");
+  const profileEmail = document.getElementById("profileEmail");
+  const profilePlanText = document.getElementById("profilePlanText");
+  const profileCredits = document.getElementById("profileCredits");
+  const profileEarned = document.getElementById("profileEarned");
+  const profileCopies = document.getElementById("profileCopies");
+  const profileUploads = document.getElementById("profileUploads");
+  const profileBio = document.getElementById("profileBio");
+
+  function showFeedError(msg) {
+    feedError.style.display = "block";
+    feedError.textContent = msg;
+    feedList.innerHTML = "";
+  }
+
+  function clearFeedError() {
+    feedError.style.display = "none";
+    feedError.textContent = "";
+  }
+
+  function showShopError(msg) {
+    shopError.style.display = "block";
+    shopError.textContent = msg;
+    shopGrid.innerHTML = "";
+  }
+
+  function clearShopError() {
+    shopError.style.display = "none";
+    shopError.textContent = "";
+  }
+
+  function formatDate(ts) {
+    if (!ts) return "";
+    const d = new Date(ts);
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
+  // ---- NAV ----
+  const navButtons = document.querySelectorAll(".nav-btn");
+  navButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      const view = btn.dataset.view;
+      navButtons.forEach(b => b.classList.toggle("active", b === btn));
+      document.querySelectorAll("main section").forEach(sec => {
+        sec.style.display = sec.id === "view-" + view ? "block" : "none";
+      });
+    });
+  });
+
+  // ---- DATA LOADERS ----
+
+  async function loadProfile(userId, email) {
+    try {
+      const { data, error } = await window.supabase
+        .from("users")
+        .select("username, profile_picture, bio, credits, total_earned, is_premium")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("profile error:", error);
         return;
       }
 
-      // Nav handling
-      const navButtons = document.querySelectorAll('.nav-btn');
-      const views = {
-        home: document.getElementById('view-home'),
-        shop: document.getElementById('view-shop'),
-        profile: document.getElementById('view-profile'),
-      };
-      navButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-          const view = btn.dataset.view;
-          navButtons.forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          Object.entries(views).forEach(([key, el]) => {
-            el.style.display = key === view ? 'block' : 'none';
-          });
-        });
-      });
+      const row = data || {};
+      const name = row.username || email || "iseehhalo user";
 
-      // Topbar elements
-      const userEmailEl = document.getElementById('userEmail');
-      const creditsValueEl = document.getElementById('creditsValue');
-      const premiumValueEl = document.getElementById('premiumValue');
-      const btnSignAuth = document.getElementById('btnSignAuth');
-      const btnSignOut = document.getElementById('btnSignOut');
+      profileName.textContent = name;
+      profileEmail.textContent = email || "";
+      profileCredits.textContent = row.credits ?? 0;
+      profileEarned.textContent = row.total_earned ?? 0;
+      profileBio.textContent = row.bio || "";
 
-      const profileGate = document.getElementById('profileGate');
-      const profileContent = document.getElementById('profileContent');
-      const goAuthFromProfile = document.getElementById('goAuthFromProfile');
-
-      // Profile elements
-      const profileEmail = document.getElementById('profileEmail');
-      const profileUsername = document.getElementById('profileUsername');
-      const profileCredits = document.getElementById('profileCredits');
-      const profileTotalEarned = document.getElementById('profileTotalEarned');
-      const profilePremium = document.getElementById('profilePremium');
-      const profileCopyCount = document.getElementById('profileCopyCount');
-      const profileSongCount = document.getElementById('profileSongCount');
-      const saveProfileBtn = document.getElementById('saveProfileBtn');
-      const profileSaveMsg = document.getElementById('profileSaveMsg');
-
-      // Shop elements
-      const songCopiesGrid = document.getElementById('songCopiesGrid');
-      const songCopiesEmpty = document.getElementById('songCopiesEmpty');
-      const productsGrid = document.getElementById('productsGrid');
-      const productsEmpty = document.getElementById('productsEmpty');
-      const myCopiesGrid = document.getElementById('myCopiesGrid');
-      const myCopiesEmpty = document.getElementById('myCopiesEmpty');
-      const mySongsGrid = document.getElementById('mySongsGrid');
-      const mySongsEmpty = document.getElementById('mySongsEmpty');
-
-      // Feed elements
-      const feedList = document.getElementById('feedList');
-      const feedEmpty = document.getElementById('feedEmpty');
-      const feedError = document.getElementById('feedError');
-
-      const gotoAuth = () => window.location.href = '/auth.html';
-
-      btnSignAuth.addEventListener('click', gotoAuth);
-      goAuthFromProfile.addEventListener('click', gotoAuth);
-
-      btnSignOut.addEventListener('click', async () => {
-        await supabase.auth.signOut();
-        await refreshAuthState();
-      });
-
-      async function refreshAuthState() {
-        const { data, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error(error);
-        }
-        const session = data?.session || null;
-        if (!session) {
-          userEmailEl.textContent = '';
-          creditsValueEl.textContent = '—';
-          premiumValueEl.textContent = 'Free';
-          btnSignAuth.style.display = 'inline-block';
-          btnSignOut.style.display = 'none';
-
-          profileGate.style.display = 'block';
-          profileContent.style.display = 'none';
-        } else {
-          userEmailEl.textContent = session.user.email;
-          btnSignAuth.style.display = 'none';
-          btnSignOut.style.display = 'inline-block';
-
-          // Load profile info
-          await loadProfile(session.user);
-        }
+      const avatarUrl = row.profile_picture;
+      if (avatarUrl) {
+        profileAvatar.style.backgroundImage = `url("${avatarUrl}")`;
+      } else {
+        profileAvatar.style.backgroundImage = "none";
       }
 
-      async function loadProfile(user) {
-        try {
-          const { data: profile, error } = await supabase
-            .from('users')
-            .select('id, email, username, credits, total_earned, is_premium')
-            .eq('id', user.id)
-            .maybeSingle();
-          if (error) throw error;
+      const premium = row.is_premium === true;
+      profilePlanText.textContent = premium ? "Premium plan" : "Free plan";
+      navPlan.textContent = premium ? "Premium" : "Free";
+      navCredits.textContent = row.credits ?? 0;
+    } catch (err) {
+      console.error("loadProfile exception:", err);
+    }
 
-          profileGate.style.display = 'none';
-          profileContent.style.display = 'block';
+    // copies count
+    try {
+      const { count } = await window.supabase
+        .from("song_copies")
+        .select("id", { head: true, count: "exact" })
+        .eq("owner", userId);
+      profileCopies.textContent = count ?? 0;
+    } catch (err) {
+      console.error("copies count error:", err);
+    }
 
-          profileEmail.textContent = profile?.email || user.email;
-          profileUsername.value = profile?.username || '';
-          profileCredits.textContent = profile?.credits ?? 0;
-          profileTotalEarned.textContent = profile?.total_earned ?? 0;
-          profilePremium.textContent = profile?.is_premium ? 'Premium' : 'Free';
+    // uploads count
+    try {
+      const { count } = await window.supabase
+        .from("songs")
+        .select("id", { head: true, count: "exact" })
+        .eq("creator_id", userId);
+      profileUploads.textContent = count ?? 0;
+    } catch (err) {
+      console.error("uploads count error:", err);
+    }
+  }
 
-          creditsValueEl.textContent = profile?.credits ?? 0;
-          premiumValueEl.textContent = profile?.is_premium ? 'Premium' : 'Free';
+  async function loadFeed() {
+    clearFeedError();
+    feedList.innerHTML = "Loading feed…";
 
-          // My copies
-          const { data: myCopies, error: copyErr } = await supabase
-            .from('song_copies')
-            .select(`
-              id,
-              song:songs ( id, title, artist, cover_url, stream_count )
-            `)
-            .eq('owner', user.id);
+    try {
+      const { data, error } = await window.supabase
+        .from("posts")
+        .select(`
+          id,
+          caption,
+          media_url,
+          media_type,
+          created_at,
+          users:users (
+            username,
+            profile_picture
+          )
+        `)
+        .order("created_at", { ascending: false })
+        .limit(40);
 
-          if (copyErr) throw copyErr;
-
-          renderSongCardGrid(myCopiesGrid, myCopies || []);
-          myCopiesEmpty.style.display = !myCopies || myCopies.length === 0 ? 'block' : 'none';
-          profileCopyCount.textContent = myCopies?.length || 0;
-
-          // My songs
-          const { data: mySongs, error: songsErr } = await supabase
-            .from('songs')
-            .select('id, title, artist, cover_url, stream_count')
-            .eq('creator_id', user.id);
-
-          if (songsErr) throw songsErr;
-
-          renderSongCardGrid(mySongsGrid, mySongs || []);
-          mySongsEmpty.style.display = !mySongs || mySongs.length === 0 ? 'block' : 'none';
-          profileSongCount.textContent = mySongs?.length || 0;
-        } catch (err) {
-          console.error('loadProfile error', err);
-          profileGate.style.display = 'block';
-          profileContent.style.display = 'none';
-        }
+      if (error) {
+        console.error("feed error:", error);
+        showFeedError(error.message || "Could not load feed.");
+        return;
       }
 
-      saveProfileBtn.addEventListener('click', async () => {
-        profileSaveMsg.textContent = 'Saving…';
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          profileSaveMsg.textContent = 'You must be signed in.';
-          return;
-        }
-        try {
-          const { error } = await supabase
-            .from('users')
-            .update({ username: profileUsername.value || null })
-            .eq('id', user.id);
-          if (error) throw error;
-          profileSaveMsg.textContent = 'Saved ✔';
-        } catch (err) {
-          console.error(err);
-          profileSaveMsg.textContent = 'Could not save.';
-        }
-      });
-
-      function renderSongCardGrid(container, rows) {
-        container.innerHTML = '';
-        if (!rows || rows.length === 0) return;
-        rows.forEach((row) => {
-          const song = row.song || row;
-          const el = document.createElement('div');
-          el.className = 'song-card';
-          el.innerHTML = `
-            <div class="song-title">${song.title || 'Untitled'}</div>
-            <div class="song-artist">${song.artist || 'Unknown artist'}</div>
-            <div class="song-meta">Streams: ${song.stream_count ?? 0}</div>
-          `;
-          container.appendChild(el);
-        });
+      const posts = data || [];
+      if (!posts.length) {
+        feedList.innerHTML = '<div class="feed-empty">No posts yet. When artists share, they’ll appear here.</div>';
+        return;
       }
 
-      async function loadShop() {
-        try {
-          // Copies
-          const { data: copies, error: copyErr } = await supabase
-            .from('song_copies')
-            .select(`
-              id,
-              is_listed,
-              listing_price,
-              song:songs ( id, title, artist, cover_url, stream_count )
-            `)
-            .eq('is_listed', true);
+      feedList.innerHTML = "";
+      posts.forEach(post => {
+        const wrap = document.createElement("div");
+        wrap.className = "post";
 
-          if (copyErr) throw copyErr;
+        const user = post.users || {};
+        const displayName = user.username || "Anon user";
+        const avatarUrl = user.profile_picture || "";
 
-          songCopiesGrid.innerHTML = '';
-          if (!copies || copies.length === 0) {
-            songCopiesEmpty.style.display = 'block';
+        const avatar = document.createElement("div");
+        avatar.className = "post-avatar";
+        if (avatarUrl) avatar.style.backgroundImage = `url("${avatarUrl}")`;
+
+        const right = document.createElement("div");
+        const header = document.createElement("div");
+        header.className = "post-header";
+
+        const nameEl = document.createElement("div");
+        nameEl.className = "post-name";
+        nameEl.textContent = displayName;
+
+        const timeEl = document.createElement("div");
+        timeEl.className = "post-time";
+        timeEl.textContent = formatDate(post.created_at);
+
+        header.appendChild(nameEl);
+        header.appendChild(timeEl);
+
+        const captionEl = document.createElement("div");
+        captionEl.className = "post-caption";
+        captionEl.textContent = post.caption || "";
+
+        right.appendChild(header);
+        right.appendChild(captionEl);
+
+        if (post.media_url) {
+          const mediaWrap = document.createElement("div");
+          mediaWrap.className = "post-media";
+
+          if (post.media_type === "video") {
+            const vid = document.createElement("video");
+            vid.src = post.media_url;
+            vid.controls = true;
+            mediaWrap.appendChild(vid);
           } else {
-            songCopiesEmpty.style.display = 'none';
-            copies.forEach((row) => {
-              const song = row.song || {};
-              const card = document.createElement('div');
-              card.className = 'song-card';
-              card.innerHTML = `
-                <div class="song-title">${song.title || 'Untitled'}</div>
-                <div class="song-artist">${song.artist || 'Unknown artist'}</div>
-                <div class="song-meta">Streams: ${song.stream_count ?? 0}</div>
-                <div class="song-meta">Price: ${row.listing_price ?? 0} credits</div>
-                <button class="btn-sm primary" data-copy-id="${row.id}">Buy copy</button>
-              `;
-              songCopiesGrid.appendChild(card);
-            });
+            const img = document.createElement("img");
+            img.src = post.media_url;
+            img.alt = "";
+            mediaWrap.appendChild(img);
           }
-
-          // Simple handler stub for buying copy
-          songCopiesGrid.addEventListener('click', async (e) => {
-            const btn = e.target.closest('button[data-copy-id]');
-            if (!btn) return;
-            alert("Buying via web is not wired yet — you'll hook this into your buy_song_copy_by_user() RPC.");
-          }, { once: true });
-
-          // Products
-          const { data: products, error: prodErr } = await supabase
-            .from('products')
-            .select('*')
-            .eq('in_stock', true)
-            .order('created_at', { ascending: false });
-
-          if (prodErr) throw prodErr;
-
-          productsGrid.innerHTML = '';
-          if (!products || products.length === 0) {
-            productsEmpty.style.display = 'block';
-          } else {
-            productsEmpty.style.display = 'none';
-            products.forEach((p) => {
-              const card = document.createElement('div');
-              card.className = 'product-card';
-              card.innerHTML = `
-                <div class="product-name">${p.name}</div>
-                <div class="product-desc">${p.description}</div>
-                <div class="product-meta">Price: ${(p.price_cents ?? 0)} credits</div>
-                <button class="btn-sm primary" data-product-id="${p.id}">Buy</button>
-              `;
-              productsGrid.appendChild(card);
-            });
-          }
-
-          productsGrid.addEventListener('click', async (e) => {
-            const btn = e.target.closest('button[data-product-id]');
-            if (!btn) return;
-            alert("Buying products via web is not wired yet — you'll connect this to buy_product() RPC.");
-          }, { once: true });
-        } catch (err) {
-          console.error('loadShop error', err);
+          right.appendChild(mediaWrap);
         }
-      }
 
-            async function loadFeed() {
-        feedError.style.display = 'none';
-        feedEmpty.style.display = 'none';
-        feedList.innerHTML = '';
-
-        try {
-          const { data: posts, error } = await supabase
-            .from('posts')
-            .select(`
-              id,
-              caption,
-              media_url,
-              media_type,
-              created_at,
-              song_id,
-              user:users ( id, username, email ),
-              post_likes(count),
-              comments(count)
-            `)
-            .order('created_at', { ascending: false })
-            .limit(30);
-
-          if (error) throw error;
-
-          if (!posts || posts.length === 0) {
-            feedEmpty.style.display = 'block';
-            return;
-          }
-
-          posts.forEach((post) => {
-            const div = document.createElement('div');
-            div.className = 'post';
-
-            const username =
-              post.user?.username ||
-              (post.user?.email?.split('@')[0] ?? 'User');
-
-            const initials = username
-              .split(' ')
-              .map((x) => x[0])
-              .join('')
-              .slice(0, 2)
-              .toUpperCase();
-
-            const dateStr = new Date(post.created_at).toLocaleDateString();
-
-            const likesCount =
-              post.post_likes?.[0]?.count != null
-                ? post.post_likes[0].count
-                : 0;
-
-            const commentsCount =
-              post.comments?.[0]?.count != null
-                ? post.comments[0].count
-                : 0;
-
-            div.innerHTML = `
-              <div class="post-header">
-                <div class="avatar-circle">${initials || 'U'}</div>
-                <div>
-                  <div class="post-user">${username}</div>
-                  <div class="post-meta">${dateStr}</div>
-                </div>
-              </div>
-              <div class="post-body">
-                ${post.caption ? post.caption.replace(/</g, "&lt;") : ''}
-              </div>
-              ${
-                post.song_id
-                  ? `
-                <div class="post-song">
-                  Linked song ID: <code>${post.song_id}</code>
-                </div>
-              `
-                  : ''
-              }
-              <div class="post-actions">
-                <button data-action="like" data-post-id="${post.id}">
-                  ♥ Like · ${likesCount}
-                </button>
-                <button data-action="comment" data-post-id="${post.id}">
-                  💬 Comment · ${commentsCount}
-                </button>
-              </div>
-            `;
-            feedList.appendChild(div);
-          });
-
-          // Attach click handler (overwrites any previous one)
-          feedList.onclick = async (e) => {
-            const btn = e.target.closest('button[data-action]');
-            if (!btn) return;
-
-            const action = btn.dataset.action;
-            const postId = btn.dataset.postId;
-
-            // Require auth
-            const { data: userData } = await supabase.auth.getUser();
-            const user = userData?.user || null;
-            if (!user) {
-              const go = confirm('Sign in to interact with posts?');
-              if (go) window.location.href = '/auth.html';
-              return;
-            }
-
-            try {
-              if (action === 'like') {
-                // Try to insert; ignore duplicate error
-                const { error: likeErr } = await supabase
-                  .from('post_likes')
-                  .insert({
-                    post_id: postId,
-                    user_id: user.id,
-                  });
-
-                if (likeErr) {
-                  // If it's just "duplicate key", ignore; else throw
-                  if (!/duplicate key value/i.test(likeErr.message || '')) {
-                    throw likeErr;
-                  }
-                }
-              } else if (action === 'comment') {
-                const text = prompt('Write a comment:');
-                if (!text || !text.trim()) return;
-
-                const { error: commentErr } = await supabase
-                  .from('comments')
-                  .insert({
-                    post_id: postId,
-                    user_id: user.id,
-                    text: text.trim(),
-                  });
-
-                if (commentErr) throw commentErr;
-              }
-
-              // Refresh to update counts
-              await loadFeed();
-            } catch (err) {
-              console.error(err);
-              alert(
-                'Could not ' +
-                  (action === 'like' ? 'like this post.' : 'add comment.')
-              );
-            }
-          };
-        } catch (err) {
-        console.error("Feed error:", err);
-       showFeedError(err.message || "Could not load feed.");
-      }
-      }
-      // Initial load
-      refreshAuthState();
-      loadFeed();
-      loadShop();
-
-      supabase.auth.onAuthStateChange(() => {
-        refreshAuthState();
+        wrap.appendChild(avatar);
+        wrap.appendChild(right);
+        feedList.appendChild(wrap);
       });
-    });
-  </script>
+    } catch (err) {
+      console.error("feed exception:", err);
+      showFeedError(err.message || String(err) || "Could not load feed.");
+    }
+  }
+
+  async function loadShop() {
+    clearShopError();
+    shopGrid.innerHTML = "Loading products…";
+
+    try {
+      const { data, error } = await window.supabase
+        .from("products")
+        .select("id, name, description, price_cents, in_stock, image_url")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("shop error:", error);
+        showShopError(error.message || "Could not load products.");
+        return;
+      }
+
+      const items = data || [];
+      if (!items.length) {
+        shopGrid.innerHTML = '<div class="feed-empty">No products yet. Check back soon!</div>';
+        return;
+      }
+
+      shopGrid.innerHTML = "";
+      items.forEach(p => {
+        const card = document.createElement("div");
+        card.className = "product-card";
+
+        const nameEl = document.createElement("div");
+        nameEl.className = "product-name";
+        nameEl.textContent = p.name;
+
+        const descEl = document.createElement("div");
+        descEl.className = "product-description";
+        descEl.textContent = p.description;
+
+        const bottom = document.createElement("div");
+        bottom.className = "product-bottom";
+
+        const price = document.createElement("div");
+        price.className = "price";
+        const dollars = (p.price_cents ?? 0) / 100;
+        price.textContent = `${dollars.toFixed(2)} credits`;
+
+        const btn = document.createElement("button");
+        btn.className = "small-btn";
+        btn.textContent = p.in_stock === false ? "Out of stock" : "Redeem";
+        btn.disabled = p.in_stock === false;
+        // we are not wiring buy_product() yet to keep things simple
+
+        bottom.appendChild(price);
+        bottom.appendChild(btn);
+
+        card.appendChild(nameEl);
+        card.appendChild(descEl);
+        card.appendChild(bottom);
+
+        shopGrid.appendChild(card);
+      });
+    } catch (err) {
+      console.error("shop exception:", err);
+      showShopError(err.message || String(err) || "Could not load products.");
+    }
+  }
+
+  // ---- AUTH + INIT ----
+  async function init() {
+    const { data, error } = await window.supabase.auth.getSession();
+    if (error) {
+      console.error("auth getSession error:", error);
+    }
+    const session = data?.session || null;
+    if (!session) {
+      // if not logged in, send to auth
+      window.location.href = "/auth.html?from=app";
+      return;
+    }
+
+    const user = session.user;
+    const userId = user.id;
+    const email = user.email;
+
+    navEmail.textContent = email || "";
+    await loadProfile(userId, email);
+    await loadFeed();
+    await loadShop();
+  }
+
+  signOutLink.addEventListener("click", async (e) => {
+    e.preventDefault();
+    try {
+      await window.supabase.auth.signOut();
+    } finally {
+      window.location.href = "/auth.html";
+    }
+  });
+
+  init();
+</script>
 </body>
 </html>

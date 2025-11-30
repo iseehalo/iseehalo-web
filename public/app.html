@@ -943,13 +943,10 @@
             }
           };
         } catch (err) {
-          console.error(err);
-          feedError.textContent = 'Could not load feed.';
-          feedError.style.display = 'block';
-        }
+        console.error("Feed error:", err);
+       showFeedError(err.message || "Could not load feed.");
       }
-
-
+      }
       // Initial load
       refreshAuthState();
       loadFeed();

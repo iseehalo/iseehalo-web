@@ -177,12 +177,12 @@
       font-size: 14px;
     }
 
-    /* Feed */
     .feed-empty {
       color: var(--muted);
       font-size: 14px;
     }
 
+    /* Feed posts */
     .post {
       display: grid;
       grid-template-columns: 56px minmax(0, 1fr);
@@ -233,6 +233,67 @@
       object-fit: cover;
     }
 
+    /* Songs */
+    .songs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 12px;
+    }
+    .song-card {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr);
+      gap: 10px;
+      padding: 10px;
+      border-radius: 14px;
+      border: 1px solid #1c1c1c;
+      background: #101010;
+      font-size: 13px;
+    }
+    .song-cover {
+      width: 72px;
+      height: 72px;
+      border-radius: 12px;
+      background-position: center;
+      background-size: cover;
+      background-color: #333;
+    }
+    .song-title {
+      font-weight: 600;
+      font-size: 14px;
+    }
+    .song-artist {
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .song-meta {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .song-bottom {
+      margin-top: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+    }
+    .song-price {
+      font-weight: 600;
+    }
+    .song-btn {
+      border-radius: 999px;
+      border: none;
+      background: #fff;
+      color: #000;
+      font-size: 12px;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+    .song-btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
     /* Shop */
     .shop-grid {
       display: grid;
@@ -243,11 +304,24 @@
       background: #101010;
       border-radius: 14px;
       border: 1px solid #1c1c1c;
-      padding: 12px 12px 10px;
+      padding: 10px;
       display: flex;
       flex-direction: column;
       gap: 6px;
       font-size: 13px;
+    }
+    .product-image {
+      width: 100%;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 6px;
+      max-height: 150px;
+      border: 1px solid #222;
+    }
+    .product-image img {
+      width: 100%;
+      display: block;
+      object-fit: cover;
     }
     .product-name {
       font-weight: 600;
@@ -376,6 +450,9 @@
       <button class="nav-btn active" data-view="home">
         <span class="nav-btn-dot"></span> Home
       </button>
+      <button class="nav-btn" data-view="songs">
+        <span class="nav-btn-dot"></span> Songs
+      </button>
       <button class="nav-btn" data-view="shop">
         <span class="nav-btn-dot"></span> Shop
       </button>
@@ -389,9 +466,19 @@
       <section id="view-home">
         <h1>Home</h1>
         <p class="subhead">See what artists and fans are sharing on iseehalo.</p>
-        <div class="card" id="feedCard">
+        <div class="card">
           <div id="feedError" class="error-text" style="display:none;"></div>
           <div id="feedList"></div>
+        </div>
+      </section>
+
+      <!-- SONGS -->
+      <section id="view-songs" style="display:none;">
+        <h1>Songs</h1>
+        <p class="subhead">Browse limited songs, stream, and see remaining copies.</p>
+        <div class="card">
+          <div id="songsError" class="error-text" style="display:none;"></div>
+          <div id="songsGrid" class="songs-grid"></div>
         </div>
       </section>
 
@@ -454,7 +541,7 @@
   </div>
 </div>
 
-<!-- Supabase client (your global window.supabase) -->
+<!-- Supabase client (global window.supabase) -->
 <script type="module" src="/js/supabaseClient.js"></script>
 <script type="module">
   const navCredits = document.getElementById("navCredits");
@@ -464,6 +551,9 @@
 
   const feedError = document.getElementById("feedError");
   const feedList = document.getElementById("feedList");
+
+  const songsError = document.getElementById("songsError");
+  const songsGrid = document.getElementById("songsGrid");
 
   const shopError = document.getElementById("shopError");
   const shopGrid = document.getElementById("shopGrid");
@@ -478,32 +568,27 @@
   const profileUploads = document.getElementById("profileUploads");
   const profileBio = document.getElementById("profileBio");
 
-  function showFeedError(msg) {
-    feedError.style.display = "block";
-    feedError.textContent = msg;
-    feedList.innerHTML = "";
+  function showError(elem, msg) {
+    elem.style.display = "block";
+    elem.textContent = msg;
   }
-
-  function clearFeedError() {
-    feedError.style.display = "none";
-    feedError.textContent = "";
-  }
-
-  function showShopError(msg) {
-    shopError.style.display = "block";
-    shopError.textContent = msg;
-    shopGrid.innerHTML = "";
-  }
-
-  function clearShopError() {
-    shopError.style.display = "none";
-    shopError.textContent = "";
+  function clearError(elem) {
+    elem.style.display = "none";
+    elem.textContent = "";
   }
 
   function formatDate(ts) {
     if (!ts) return "";
     const d = new Date(ts);
     return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
+  // copy price logic – mirror get_copy_price() in SQL
+  function computeCopyPrice(streamCount) {
+    const s = streamCount || 0;
+    if (s < 50) return 5;
+    if (s < 200) return 10;
+    return 20;
   }
 
   // ---- NAV ----
@@ -518,8 +603,7 @@
     });
   });
 
-  // ---- DATA LOADERS ----
-
+  // ---- PROFILE ----
   async function loadProfile(userId, email) {
     try {
       const { data, error } = await window.supabase
@@ -534,7 +618,7 @@
       }
 
       const row = data || {};
-      const name = row.username || email || "iseehhalo user";
+      const name = row.username || email || "iseehalo user";
 
       profileName.textContent = name;
       profileEmail.textContent = email || "";
@@ -543,11 +627,8 @@
       profileBio.textContent = row.bio || "";
 
       const avatarUrl = row.profile_picture;
-      if (avatarUrl) {
-        profileAvatar.style.backgroundImage = `url("${avatarUrl}")`;
-      } else {
-        profileAvatar.style.backgroundImage = "none";
-      }
+      if (avatarUrl) profileAvatar.style.backgroundImage = `url("${avatarUrl}")`;
+      else profileAvatar.style.backgroundImage = "none";
 
       const premium = row.is_premium === true;
       profilePlanText.textContent = premium ? "Premium plan" : "Free plan";
@@ -580,8 +661,9 @@
     }
   }
 
+  // ---- FEED ----
   async function loadFeed() {
-    clearFeedError();
+    clearError(feedError);
     feedList.innerHTML = "Loading feed…";
 
     try {
@@ -593,7 +675,8 @@
           media_url,
           media_type,
           created_at,
-          users:users (
+          user_id,
+          users!posts_user_id_fkey (
             username,
             profile_picture
           )
@@ -603,7 +686,8 @@
 
       if (error) {
         console.error("feed error:", error);
-        showFeedError(error.message || "Could not load feed.");
+        showError(feedError, error.message || "Could not load feed.");
+        feedList.innerHTML = "";
         return;
       }
 
@@ -672,12 +756,112 @@
       });
     } catch (err) {
       console.error("feed exception:", err);
-      showFeedError(err.message || String(err) || "Could not load feed.");
+      showError(feedError, err.message || String(err) || "Could not load feed.");
+      feedList.innerHTML = "";
     }
   }
 
+  // ---- SONGS ----
+  async function loadSongs() {
+    clearError(songsError);
+    songsGrid.innerHTML = "Loading songs…";
+
+    try {
+      // Prefer the view if it exists
+      let res = await window.supabase
+        .from("songs_with_remaining")
+        .select("id, title, artist, cover_url, stream_count, remaining_copies")
+        .order("created_at", { ascending: false });
+
+      // If the view doesn't exist, fall back to songs table
+      if (res.error && /relation .* does not exist/i.test(res.error.message)) {
+        res = await window.supabase
+          .from("songs")
+          .select("id, title, artist, cover_url, stream_count")
+          .order("created_at", { ascending: false });
+      }
+
+      const { data, error } = res;
+      if (error) {
+        console.error("songs error:", error);
+        showError(songsError, error.message || "Could not load songs.");
+        songsGrid.innerHTML = "";
+        return;
+      }
+
+      const songs = data || [];
+      if (!songs.length) {
+        songsGrid.innerHTML = '<div class="feed-empty">No songs have been uploaded yet.</div>';
+        return;
+      }
+
+      songsGrid.innerHTML = "";
+      songs.forEach(s => {
+        const card = document.createElement("div");
+        card.className = "song-card";
+
+        const cover = document.createElement("div");
+        cover.className = "song-cover";
+        if (s.cover_url) cover.style.backgroundImage = `url("${s.cover_url}")`;
+
+        const right = document.createElement("div");
+
+        const title = document.createElement("div");
+        title.className = "song-title";
+        title.textContent = s.title || "Untitled track";
+
+        const artist = document.createElement("div");
+        artist.className = "song-artist";
+        artist.textContent = s.artist || "Unknown artist";
+
+        const meta = document.createElement("div");
+        meta.className = "song-meta";
+        const remaining = typeof s.remaining_copies === "number"
+          ? s.remaining_copies
+          : null;
+        meta.textContent =
+          `Streams: ${s.stream_count ?? 0}` +
+          (remaining !== null ? ` • Remaining copies: ${remaining}` : "");
+
+        const bottom = document.createElement("div");
+        bottom.className = "song-bottom";
+
+        const priceEl = document.createElement("div");
+        priceEl.className = "song-price";
+        const price = computeCopyPrice(s.stream_count);
+        priceEl.textContent = `${price} credits / copy`;
+
+        const btn = document.createElement("button");
+        btn.className = "song-btn";
+        btn.textContent = "View";
+        // Later you can hook this to open a song detail / player
+        btn.addEventListener("click", () => {
+          alert(`Song: ${s.title} — this is where a detail/player view would go.`);
+        });
+
+        bottom.appendChild(priceEl);
+        bottom.appendChild(btn);
+
+        right.appendChild(title);
+        right.appendChild(artist);
+        right.appendChild(meta);
+        right.appendChild(bottom);
+
+        card.appendChild(cover);
+        card.appendChild(right);
+
+        songsGrid.appendChild(card);
+      });
+    } catch (err) {
+      console.error("songs exception:", err);
+      showError(songsError, err.message || String(err) || "Could not load songs.");
+      songsGrid.innerHTML = "";
+    }
+  }
+
+  // ---- SHOP ----
   async function loadShop() {
-    clearShopError();
+    clearError(shopError);
     shopGrid.innerHTML = "Loading products…";
 
     try {
@@ -688,7 +872,8 @@
 
       if (error) {
         console.error("shop error:", error);
-        showShopError(error.message || "Could not load products.");
+        showError(shopError, error.message || "Could not load products.");
+        shopGrid.innerHTML = "";
         return;
       }
 
@@ -703,6 +888,16 @@
         const card = document.createElement("div");
         card.className = "product-card";
 
+        if (p.image_url) {
+          const imgWrap = document.createElement("div");
+          imgWrap.className = "product-image";
+          const img = document.createElement("img");
+          img.src = p.image_url;
+          img.alt = p.name || "";
+          imgWrap.appendChild(img);
+          card.appendChild(imgWrap);
+        }
+
         const nameEl = document.createElement("div");
         nameEl.className = "product-name";
         nameEl.textContent = p.name;
@@ -716,14 +911,15 @@
 
         const price = document.createElement("div");
         price.className = "price";
-        const dollars = (p.price_cents ?? 0) / 100;
-        price.textContent = `${dollars.toFixed(2)} credits`;
+        const cents = p.price_cents ?? 0;
+        const credits = cents / 100;
+        price.textContent = `${credits.toFixed(2)} credits`;
 
         const btn = document.createElement("button");
         btn.className = "small-btn";
         btn.textContent = p.in_stock === false ? "Out of stock" : "Redeem";
         btn.disabled = p.in_stock === false;
-        // we are not wiring buy_product() yet to keep things simple
+        // You can wire this to call buy_product() later
 
         bottom.appendChild(price);
         bottom.appendChild(btn);
@@ -736,7 +932,8 @@
       });
     } catch (err) {
       console.error("shop exception:", err);
-      showShopError(err.message || String(err) || "Could not load products.");
+      showError(shopError, err.message || String(err) || "Could not load products.");
+      shopGrid.innerHTML = "";
     }
   }
 
@@ -748,7 +945,6 @@
     }
     const session = data?.session || null;
     if (!session) {
-      // if not logged in, send to auth
       window.location.href = "/auth.html?from=app";
       return;
     }
@@ -760,6 +956,7 @@
     navEmail.textContent = email || "";
     await loadProfile(userId, email);
     await loadFeed();
+    await loadSongs();
     await loadShop();
   }
 
@@ -776,3 +973,4 @@
 </script>
 </body>
 </html>
+

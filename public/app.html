@@ -639,6 +639,63 @@
       }
     }
 
+    /* Now Playing panel (Songs view) */
+.now-playing {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  margin-bottom: 16px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #181818, #050505);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.now-playing-cover {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: #222;
+  flex-shrink: 0;
+}
+
+.now-playing-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.now-playing-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.now-playing-title {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.now-playing-artist {
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.now-playing-streams {
+  font-size: 11px;
+  color: #888;
+}
+
+
 
     /* Auth overlay */
 
@@ -738,13 +795,26 @@
         </section>
 
         <!-- SONGS -->
-        <section id="view-songs" class="view">
+       <section id="view-songs" class="view">
           <h2 style="font-size:16px;margin:0 0 10px;">Songs on iseehalo</h2>
           <p style="font-size:12px;color:var(--muted);margin-top:0;margin-bottom:8px;">
             Browse songs available on the platform. Tap a track to start playing.
           </p>
-          <div id="songsGrid" class="song-grid"></div>
-        </section>
+
+         <!-- Now Playing panel -->
+       <div id="nowPlaying" class="now-playing" style="display:none;">
+       <img id="nowPlayingCover" class="now-playing-cover" src="" alt="Cover" />
+      <div class="now-playing-meta">
+      <div class="now-playing-label">Now playing</div>
+      <div id="nowPlayingTitle" class="now-playing-title">—</div>
+      <div id="nowPlayingArtist" class="now-playing-artist">—</div>
+      <div id="nowPlayingStreams" class="now-playing-streams"></div>
+     </div>
+    </div>
+
+    <div id="songsGrid" class="song-grid"></div>
+    </section>
+
 
         <!-- SHOP -->
         <section id="view-shop" class="view">
@@ -835,6 +905,11 @@
     const productGrid = $("productGrid");
     const profileCard = $("profileCard");
     const playerBar = $("playerBar");
+    const nowPlaying = $("nowPlaying");
+    const nowPlayingCover = $("nowPlayingCover");
+    const nowPlayingTitle = $("nowPlayingTitle");
+    const nowPlayingArtist = $("nowPlayingArtist");
+    const nowPlayingStreams = $("nowPlayingStreams");
     const audioPlayer = $("audioPlayer");
     const playerTitle = $("playerTitle");
     const playerArtist = $("playerArtist");
@@ -890,35 +965,44 @@
     }
 
     function startPlayingSong(song) {
-      if (!song || !song.audio_url) return;
+  if (!song || !song.audio_url) return;
 
-      // track stream for this song
-      currentPlayingSongId = song.id;
-      streamReportedForCurrentPlay = false;
+  // track stream for this song
+  currentPlayingSongId = song.id;
+  streamReportedForCurrentPlay = false;
 
-      // fill player UI
-      playerTitle.textContent = song.title || "Untitled";
-      playerArtist.textContent = song.artist || "Unknown artist";
+  // --- bottom player bar ---
+  playerTitle.textContent = song.title || "Untitled";
+  playerArtist.textContent = song.artist || "Unknown artist";
+  if (song.cover_url) {
+    playerCover.src = song.cover_url;
+  } else {
+    playerCover.src = "";
+  }
+  playerBar.style.display = "flex";
+  audioPlayer.src = song.audio_url;
 
-      if (song.cover_url) {
-        playerCover.src = song.cover_url;
-      } else {
-        playerCover.src = "";
-      }
+  // --- now playing panel in Songs view ---
+  nowPlaying.style.display = "flex";
+  nowPlayingTitle.textContent = song.title || "Untitled";
+  nowPlayingArtist.textContent = song.artist || "Unknown artist";
+  nowPlayingStreams.textContent = `${song.stream_count || 0} streams`;
+  if (song.cover_url) {
+    nowPlayingCover.src = song.cover_url;
+  } else {
+    nowPlayingCover.src = "";
+  }
 
-      // show bar + set audio source
-      playerBar.style.display = "flex";
-      audioPlayer.src = song.audio_url;
+  audioPlayer
+    .play()
+    .then(() => {
+      playerPlayPause.textContent = "⏸";
+    })
+    .catch((err) => {
+      console.error("Audio play failed:", err);
+    });
+}
 
-      audioPlayer
-        .play()
-        .then(() => {
-          playerPlayPause.textContent = "⏸";
-        })
-        .catch((err) => {
-          console.error("Audio play failed:", err);
-        });
-    }
 
     async function registerStreamPlay(songId) {
       if (!songId) return;
@@ -951,6 +1035,12 @@
           if (streamsEl) {
             streamsEl.textContent = `${song.stream_count} streams`;
           }
+
+          // If this is the currently playing song, update the Now Playing panel too
+          if (currentPlayingSongId === songId) {
+            nowPlayingStreams.textContent = `${song.stream_count} streams`;
+          }
+
         }
       } catch (err) {
         console.error("increment_stream RPC failed:", err);

@@ -25,16 +25,14 @@
       font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
       background: radial-gradient(circle at top, #1c1c1c 0, #000 45%);
       color: var(--text);
-      display: flex;
-      flex-direction: column;
+      /* ❌ no flex here – let the page scroll normally */
     }
 
     .app-shell {
-      flex: 1;
+      min-height: 100vh;
       display: grid;
       grid-template-columns: 240px minmax(0, 1fr);
       gap: 0;
-      max-height: 100vh;
     }
 
     @media (max-width: 900px) {
@@ -70,7 +68,7 @@
       letter-spacing: -0.4px;
       display: inline-flex;
       align-items: center;
-      gap: 0; /* no visual space between isee + halo */
+      gap: 0;
     }
     .isee { color: #fff; }
     .halo { color: var(--halo); }
@@ -147,7 +145,7 @@
       background: #000;
       display: flex;
       flex-direction: column;
-      max-height: 100vh;
+      /* no max-height, let content grow */
     }
 
     .top-bar {
@@ -176,8 +174,8 @@
 
     .content {
       flex: 1;
-      overflow: auto;
-      padding: 16px 18px 90px;
+      padding: 16px 18px 90px; /* bottom padding so it doesn't sit under the player bar */
+      /* no overflow here so the whole page scrolls */
     }
 
     section.view {
@@ -685,7 +683,7 @@
     </div>
   </div>
 
-  <!-- Auth overlay (shown if no session) -->
+  <!-- Auth overlay -->
   <div class="auth-overlay" id="authOverlay" style="display:none;">
     <div class="auth-overlay-inner">
       <h2>Sign in to continue</h2>
@@ -699,10 +697,10 @@
     </div>
   </div>
 
-  <!-- Supabase client (your existing file) -->
+  <!-- Supabase client -->
   <script type="module" src="/js/supabaseClient.js"></script>
 
-  <!-- App logic -->
+  <!-- App logic (unchanged from your version) -->
   <script type="module">
     const supabase = window.supabase;
     const $ = (id) => document.getElementById(id);
@@ -919,7 +917,6 @@
         const created = new Date(post.created_at);
         const dateStr = created.toLocaleDateString();
 
-        // Basic avatar (just first letters of user_id or 'U')
         const avatarText = (post.user_id || "U").slice(0, 2).toUpperCase();
 
         let mediaHtml = "";
@@ -931,7 +928,6 @@
           }
         }
 
-        // If post is linked to a song, we can show a hint & play if we have that song in cache
         let songTagHtml = "";
         const song = post.song_id ? songsById.get(post.song_id) : null;
         if (song) {
@@ -956,7 +952,6 @@
           ${songTagHtml}
         `;
 
-        // Attach play handler if there's a song button
         if (song) {
           const btn = div.querySelector("button[data-song-id]");
           if (btn) {
@@ -969,7 +964,6 @@
     }
 
     async function loadShop() {
-      // SONG COPIES (for Shop)
       copiesList.innerHTML = "Loading song copies…";
 
       const { data: copies, error: copiesErr } = await supabase
@@ -1004,7 +998,6 @@
         });
       }
 
-      // PRODUCTS
       productGrid.innerHTML = "Loading products…";
 
       const { data: products, error: productsErr } = await supabase
@@ -1049,7 +1042,6 @@
         loadProfile(user),
         loadSongs(),
       ]);
-      // feed + shop depend on songsById a bit, so call after
       await Promise.all([
         loadFeed(),
         loadShop(),
@@ -1094,7 +1086,6 @@
         location.href = "/auth.html";
       });
 
-      // react to auth changes
       supabase.auth.onAuthStateChange(async (_event, session) => {
         if (!session) {
           authOverlay.style.display = "flex";
@@ -1111,3 +1102,4 @@
   </script>
 </body>
 </html>
+

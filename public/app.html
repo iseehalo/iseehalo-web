@@ -780,15 +780,23 @@
 
 
     function startPlayingSong(song) {
-      if (!song || !song.audio_url) return;
-      audioPlayer.src = song.audio_url;
-      playerTitle.textContent = song.title || "Untitled";
-      playerArtist.textContent = song.artist || "Unknown artist";
-      playerBar.style.display = "flex";
-      audioPlayer.play().catch(err => {
-        console.error("Audio play failed:", err);
-      });
-    }
+  if (!song || !song.audio_url) return;
+
+  // 🔑 Tell the tracker which song is playing
+  currentPlayingSongId = song.id;
+  streamReportedForCurrentPlay = false;
+  audioPlayer.currentTime = 0;
+
+  audioPlayer.src = song.audio_url;
+  playerTitle.textContent = song.title || "Untitled";
+  playerArtist.textContent = song.artist || "Unknown artist";
+  playerBar.style.display = "flex";
+
+  audioPlayer.play().catch(err => {
+    console.error("Audio play failed:", err);
+  });
+}
+
 
     async function registerStreamPlay(songId) {
       if (!songId) return;

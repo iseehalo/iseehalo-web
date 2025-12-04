@@ -477,6 +477,61 @@
       color: var(--accent);
     }
 
+    .profile-section-heading {
+  margin-top: 14px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.profile-list {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.profile-list-item {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--panel-alt);
+  border: 1px solid rgba(255,255,255,0.04);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.profile-list-cover {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background-size: cover;
+  background-position: center;
+  background-color: #222;
+  flex-shrink: 0;
+}
+
+.profile-list-main {
+  flex: 1;
+}
+
+.profile-list-title {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.profile-list-sub {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.profile-list-meta {
+  font-size: 12px;
+  color: var(--halo);
+  text-align: right;
+}
+
+
     /* Player bar */
 
     .player-bar {
@@ -845,26 +900,111 @@
   }
   currentUserRow = data;
 
-  // 2) Count purchased copies (all song_copies where this user is the owner)
-  const { count: copiesCount, error: copiesErr } = await supabase
+  // 2) Load all purchased copies (grouped by song)
+  const { data: copiesRaw, error: copiesErr } = await supabase
     .from("song_copies")
-    .select("id", { count: "exact", head: true })
+    .select("song_id")
     .eq("owner", user.id);
 
   if (copiesErr) {
-    console.error("Purchased copies count error:", copiesErr);
+    console.error("Purchased copies load error:", copiesErr);
   }
 
-  // 3) Count uploaded songs (songs where this user is the creator)
-  const { count: uploadedCount, error: uploadsErr } = await supabase
+  const copiesBySong = new Map();
+  (copiesRaw || []).forEach((c) => {
+    const prev = copiesBySong.get(c.song_id) || 0;
+    copiesBySong.set(c.song_id, prev + 1);
+  });
+
+  const purchasedCopiesCount = copiesRaw ? copiesRaw.length : 0;
+  const purchasedSongIds = [...copiesBySong.keys()];
+
+  let purchasedSongs = [];
+  if (purchasedSongIds.length > 0) {
+    const { data: copySongs, error: copySongsErr } = await supabase
+      .from("songs")
+      .select("id, title, artist, stream_count, cover_url")
+      .in("id", purchasedSongIds);
+
+    if (copySongsErr) {
+      console.error("Songs for copies load error:", copySongsErr);
+    } else {
+      purchasedSongs = copySongs.map((s) => {
+        const copiesOwned = copiesBySong.get(s.id) || 0;
+        const streams = s.stream_count || 0;
+        // 0.25 credits per stream per copy
+        const estEarnings = streams * 0.25 * copiesOwned;
+        return { ...s, copiesOwned, estEarnings };
+      });
+    }
+  }
+
+  // 3) Load uploaded songs
+  const { data: uploadedSongs, error: uploadsErr } = await supabase
     .from("songs")
-    .select("id", { count: "exact", head: true })
-    .eq("creator_id", user.id);
+    .select("id, title, artist, stream_count, cover_url, created_at")
+    .eq("creator_id", user.id)
+    .order("created_at", { ascending: false });
 
   if (uploadsErr) {
-    console.error("Uploaded songs count error:", uploadsErr);
+    console.error("Uploaded songs load error:", uploadsErr);
   }
 
+  const uploadedCount = uploadedSongs ? uploadedSongs.length : 0;
+
+  // Build HTML pieces for the lists
+  const purchasedListHtml =
+    purchasedSongs && purchasedSongs.length
+      ? purchasedSongs
+          .map((s) => {
+            const coverStyle = s.cover_url
+              ? `background-image:url('${s.cover_url}');`
+              : "";
+            return `
+              <div class="profile-list-item">
+                <div class="profile-list-cover" style="${coverStyle}"></div>
+                <div class="profile-list-main">
+                  <div class="profile-list-title">${s.title || "Untitled"}</div>
+                  <div class="profile-list-sub">${s.artist || "Unknown artist"}</div>
+                </div>
+                <div class="profile-list-meta">
+                  <div>${s.copiesOwned} copies</div>
+                  <div>${s.estEarnings.toFixed(2)} credits earned</div>
+                </div>
+              </div>
+            `;
+          })
+          .join("")
+      : `<div class="profile-bio" style="margin-top:4px;">You haven't purchased any song copies yet.</div>`;
+
+  const uploadedListHtml =
+    uploadedSongs && uploadedSongs.length
+      ? uploadedSongs
+          .map((s) => {
+            const coverStyle = s.cover_url
+              ? `background-image:url('${s.cover_url}');`
+              : "";
+            const streams = s.stream_count || 0;
+            // 0.5 credits per stream for creator
+            const estCreatorEarn = streams * 0.5;
+            return `
+              <div class="profile-list-item">
+                <div class="profile-list-cover" style="${coverStyle}"></div>
+                <div class="profile-list-main">
+                  <div class="profile-list-title">${s.title || "Untitled"}</div>
+                  <div class="profile-list-sub">${s.artist || "Unknown artist"}</div>
+                  <div class="profile-list-sub">${streams} streams</div>
+                </div>
+                <div class="profile-list-meta">
+                  <div>${estCreatorEarn.toFixed(2)} credits earned</div>
+                </div>
+              </div>
+            `;
+          })
+          .join("")
+      : `<div class="profile-bio" style="margin-top:4px;">You haven't uploaded any songs yet.</div>`;
+
+  // Avatar / header
   const initials = (data.username || data.email || "?")
     .split(" ")[0]
     .slice(0, 2)
@@ -884,6 +1024,7 @@
          Free tier
        </div>`;
 
+  // 4) Render full profile card
   profileCard.innerHTML = `
     <div class="profile-header">
       <div class="profile-avatar" style="${avatarStyle}">
@@ -895,6 +1036,7 @@
         ${premiumBadge}
       </div>
     </div>
+
     <div class="profile-stats">
       <div>
         <span>Total credits</span>
@@ -902,20 +1044,35 @@
       </div>
       <div>
         <span>Purchased copies</span>
-        <strong>${copiesCount ?? 0}</strong>
+        <strong>${purchasedCopiesCount}</strong>
       </div>
       <div>
         <span>My uploaded songs</span>
-        <strong>${uploadedCount ?? 0}</strong>
+        <strong>${uploadedCount}</strong>
       </div>
     </div>
+
     <div class="profile-bio">
       ${data.bio || "No bio yet. You can manage your profile from the mobile app."}
     </div>
+
     <div class="profile-actions">
       <button class="btn-outline accent" onclick="window.location.href='/dashboard'">
         Manage subscription
       </button>
+      <button class="btn-outline" onclick="alert('Profile editing coming soon to the web. You can edit your profile in the mobile app for now.')">
+        Edit profile
+      </button>
+    </div>
+
+    <div class="profile-section-heading">Purchased copies</div>
+    <div class="profile-list">
+      ${purchasedListHtml}
+    </div>
+
+    <div class="profile-section-heading">My uploaded songs</div>
+    <div class="profile-list">
+      ${uploadedListHtml}
     </div>
   `;
 

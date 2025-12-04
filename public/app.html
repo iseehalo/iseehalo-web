@@ -831,71 +831,98 @@
 
 
     async function loadProfile(user) {
-      const { data, error } = await supabase
-        .from("users")
-        .select("email, username, credits, total_earned, profile_picture, bio, is_premium")
-        .eq("id", user.id)
-        .maybeSingle();
+  // 1) Load base user info
+  const { data, error } = await supabase
+    .from("users")
+    .select("email, username, credits, total_earned, profile_picture, bio, is_premium")
+    .eq("id", user.id)
+    .maybeSingle();
 
-      if (error) {
-        console.error("Profile load error:", error);
-        showGlobalMsg("Could not load profile.", "error");
-        return;
-      }
-      currentUserRow = data;
+  if (error) {
+    console.error("Profile load error:", error);
+    showGlobalMsg("Could not load profile.", "error");
+    return;
+  }
+  currentUserRow = data;
 
-      const initials = (data.username || data.email || "?")
-        .split(" ")[0]
-        .slice(0, 2)
-        .toUpperCase();
+  // 2) Count purchased copies (all song_copies where this user is the owner)
+  const { count: copiesCount, error: copiesErr } = await supabase
+    .from("song_copies")
+    .select("id", { count: "exact", head: true })
+    .eq("owner", user.id);
 
-      const avatarStyle = data.profile_picture
-        ? `background-image:url('${data.profile_picture}');`
-        : "";
+  if (copiesErr) {
+    console.error("Purchased copies count error:", copiesErr);
+  }
 
-      const premiumBadge = data.is_premium
-        ? `<div class="badge-premium">
-             <span class="dot"></span>
-             Premium member
-           </div>`
-        : `<div class="badge-premium" style="opacity:.6;">
-             <span class="dot" style="background:#555;"></span>
-             Free tier
-           </div>`;
+  // 3) Count uploaded songs (songs where this user is the creator)
+  const { count: uploadedCount, error: uploadsErr } = await supabase
+    .from("songs")
+    .select("id", { count: "exact", head: true })
+    .eq("creator_id", user.id);
 
-      profileCard.innerHTML = `
-        <div class="profile-header">
-          <div class="profile-avatar" style="${avatarStyle}">
-            ${avatarStyle ? "" : initials}
-          </div>
-          <div>
-            <div class="profile-name">${data.username || "Unnamed user"}</div>
-            <div class="profile-email">${data.email || ""}</div>
-            ${premiumBadge}
-          </div>
-        </div>
-        <div class="profile-stats">
-          <div>
-            <span>Credits</span>
-            <strong>${Number(data.credits ?? 0).toFixed(2)}</strong>
-          </div>
-          <div>
-            <span>Total earned</span>
-            <strong>${Number(data.total_earned ?? 0).toFixed(2)}</strong>
-          </div>
-        </div>
-        <div class="profile-bio">
-          ${data.bio || "No bio yet. You can manage your profile from the mobile app."}
-        </div>
-        <div class="profile-actions">
-          <button class="btn-outline accent" onclick="window.location.href='/dashboard'">
-            Manage subscription
-          </button>
-        </div>
-      `;
+  if (uploadsErr) {
+    console.error("Uploaded songs count error:", uploadsErr);
+  }
 
-      sidebarCredits.textContent = "Credits: " + Number(data.credits ?? 0).toFixed(2);
-    }
+  const initials = (data.username || data.email || "?")
+    .split(" ")[0]
+    .slice(0, 2)
+    .toUpperCase();
+
+  const avatarStyle = data.profile_picture
+    ? `background-image:url('${data.profile_picture}');`
+    : "";
+
+  const premiumBadge = data.is_premium
+    ? `<div class="badge-premium">
+         <span class="dot"></span>
+         Premium member
+       </div>`
+    : `<div class="badge-premium" style="opacity:.6;">
+         <span class="dot" style="background:#555;"></span>
+         Free tier
+       </div>`;
+
+  profileCard.innerHTML = `
+    <div class="profile-header">
+      <div class="profile-avatar" style="${avatarStyle}">
+        ${avatarStyle ? "" : initials}
+      </div>
+      <div>
+        <div class="profile-name">${data.username || "Unnamed user"}</div>
+        <div class="profile-email">${data.email || ""}</div>
+        ${premiumBadge}
+      </div>
+    </div>
+    <div class="profile-stats">
+      <div>
+        <span>Total credits</span>
+        <strong>${Number(data.credits ?? 0).toFixed(2)}</strong>
+      </div>
+      <div>
+        <span>Purchased copies</span>
+        <strong>${copiesCount ?? 0}</strong>
+      </div>
+      <div>
+        <span>My uploaded songs</span>
+        <strong>${uploadedCount ?? 0}</strong>
+      </div>
+    </div>
+    <div class="profile-bio">
+      ${data.bio || "No bio yet. You can manage your profile from the mobile app."}
+    </div>
+    <div class="profile-actions">
+      <button class="btn-outline accent" onclick="window.location.href='/dashboard'">
+        Manage subscription
+      </button>
+    </div>
+  `;
+
+  // Sidebar credits label
+  sidebarCredits.textContent = "Credits: " + Number(data.credits ?? 0).toFixed(2);
+}
+
 
     async function loadSongs() {
       songsGrid.innerHTML = "Loading songs…";

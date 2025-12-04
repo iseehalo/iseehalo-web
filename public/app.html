@@ -717,16 +717,20 @@
     const copiesList = $("copiesList");
     const productGrid = $("productGrid");
     const profileCard = $("profileCard");
+  const playerBar = $("playerBar");
+  const audioPlayer = $("audioPlayer");
+  const playerTitle = $("playerTitle");
+  const playerArtist = $("playerArtist");
+  const playerStop = $("playerStop");
 
-    const playerBar = $("playerBar");
-    const audioPlayer = $("audioPlayer");
-    const playerTitle = $("playerTitle");
-    const playerArtist = $("playerArtist");
-    const playerStop = $("playerStop");
+  let currentSession = null;
+  let currentUserRow = null;
+  let songsById = new Map();
 
-    let currentSession = null;
-    let currentUserRow = null;
-    let songsById = new Map();
+  // streaming tracking
+  let currentPlayingSongId = null;
+  let streamReportedForCurrentPlay = false;
+
 
     function showGlobalMsg(text, kind = "") {
       globalMsg.textContent = text || "";
@@ -757,8 +761,23 @@
       playerStop.addEventListener("click", () => {
         audioPlayer.pause();
         audioPlayer.currentTime = 0;
+        // optional: reset tracking for this play
+        streamReportedForCurrentPlay = true;
       });
-    }
+
+      // When playback passes 10s for the first time, count a stream
+      audioPlayer.addEventListener("timeupdate", () => {
+      if (
+        currentPlayingSongId &&
+        !streamReportedForCurrentPlay &&
+        audioPlayer.currentTime >= 10
+      ) {
+        streamReportedForCurrentPlay = true;
+        registerStreamPlay(currentPlayingSongId);
+      }
+    });
+}
+
 
     function startPlayingSong(song) {
       if (!song || !song.audio_url) return;
@@ -770,6 +789,38 @@
         console.error("Audio play failed:", err);
       });
     }
+
+    async function registerStreamPlay(songId) {
+      if (!songId) return;
+
+      try {
+        const { error } = await supabase.rpc("increment_stream", {
+          song_uuid: songId,
+        });
+      if (error) {
+        console.error("increment_stream RPC error:", error);
+        return;
+      }
+
+    // Update local cache
+      const song = songsById.get(songId);
+      if (song) {
+       song.stream_count = (song.stream_count || 0) + 1;
+       songsById.set(songId, song);
+
+      // Update text in Songs grid
+      const streamsEl = document.querySelector(
+        `.song-card[data-song-id="${songId}"] .song-streams`
+      );
+      if (streamsEl) {
+        streamsEl.textContent = `${song.stream_count} streams`;
+      }
+    }
+  } catch (err) {
+    console.error("increment_stream RPC failed:", err);
+  }
+}
+
 
     async function loadProfile(user) {
       const { data, error } = await supabase
@@ -864,6 +915,7 @@
       data.forEach(song => {
         const card = document.createElement("div");
         card.className = "song-card";
+        card.dataset.songId = song.id; 
 
         const coverStyle = song.cover_url
           ? `background-image:url('${song.cover_url}');`

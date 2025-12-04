@@ -531,8 +531,7 @@
   text-align: right;
 }
 
-
-    /* Player bar */
+    /* Player bar*/
 
     .player-bar {
       position: fixed;
@@ -541,53 +540,105 @@
       bottom: 0;
       background: #050505;
       border-top: 1px solid var(--border);
-      padding: 8px 14px;
+      padding: 8px 12px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 10px;
       font-size: 12px;
+      z-index: 20;
+    }
+
+    .player-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .player-cover {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      object-fit: cover;
+      background: #222;
+      flex-shrink: 0;
     }
 
     .player-meta {
       display: flex;
       flex-direction: column;
-      max-width: 50%;
+      max-width: 180px;
     }
 
     .player-title {
       font-weight: 600;
       font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .player-artist {
       color: var(--muted);
       font-size: 11px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .player-controls {
+    .player-center {
       display: flex;
       align-items: center;
-      gap: 8px;
-      flex: 1;
-      justify-content: flex-end;
+      gap: 6px;
     }
 
-    audio {
-      width: 180px;
-      max-width: 50vw;
-    }
-
-    .btn-mini {
-      font-size: 11px;
-      padding: 4px 8px;
+    .player-btn {
       border-radius: 999px;
       border: 0;
+      padding: 4px 8px;
+      font-size: 12px;
       cursor: pointer;
+      background: #222;
+      color: #eee;
+    }
+
+    .player-btn.main {
       background: #1DB954;
       color: #000;
       font-weight: 600;
+      padding: 4px 12px;
     }
+
+    .player-right {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex: 1;
+    }
+
+    .player-right audio {
+      width: 180px;
+      max-width: 40vw;
+    }
+
+    @media (max-width: 600px) {
+      .player-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .player-left {
+        width: 100%;
+      }
+      .player-meta {
+        max-width: none;
+      }
+      .player-right audio {
+        width: 100%;
+        max-width: 100%;
+      }
+    }
+
 
     /* Auth overlay */
 
@@ -726,17 +777,28 @@
     </main>
   </div>
 
-  <!-- Player bar -->
+    <!-- Player bar -->
   <div class="player-bar" id="playerBar" style="display:none;">
-    <div class="player-meta">
-      <div class="player-title" id="playerTitle">—</div>
-      <div class="player-artist" id="playerArtist">—</div>
+    <div class="player-left">
+      <img id="playerCover" class="player-cover" src="" alt="Cover" />
+      <div class="player-meta">
+        <div class="player-title" id="playerTitle">—</div>
+        <div class="player-artist" id="playerArtist">—</div>
+      </div>
     </div>
-    <div class="player-controls">
-      <audio id="audioPlayer" controls></audio>
-      <button class="btn-mini" id="playerStop">Stop</button>
+
+    <div class="player-center">
+      <button class="player-btn" id="playerPrev">⏮</button>
+      <button class="player-btn main" id="playerPlayPause">▶</button>
+      <button class="player-btn" id="playerNext">⏭</button>
+      <button class="player-btn" id="playerReplay">🔁</button>
+    </div>
+
+    <div class="player-right">
+      <audio id="audioPlayer"></audio>
     </div>
   </div>
+
 
   <!-- Auth overlay -->
   <div class="auth-overlay" id="authOverlay" style="display:none;">
@@ -772,19 +834,25 @@
     const copiesList = $("copiesList");
     const productGrid = $("productGrid");
     const profileCard = $("profileCard");
-  const playerBar = $("playerBar");
-  const audioPlayer = $("audioPlayer");
-  const playerTitle = $("playerTitle");
-  const playerArtist = $("playerArtist");
-  const playerStop = $("playerStop");
+    const playerBar = $("playerBar");
+    const audioPlayer = $("audioPlayer");
+    const playerTitle = $("playerTitle");
+    const playerArtist = $("playerArtist");
+    const playerCover = $("playerCover");
+    const playerPrev = $("playerPrev");
+    const playerNext = $("playerNext");
+    const playerPlayPause = $("playerPlayPause");
+    const playerReplay = $("playerReplay");
 
-  let currentSession = null;
-  let currentUserRow = null;
-  let songsById = new Map();
+    let currentSession = null;
+    let currentUserRow = null;
+    let songsById = new Map();
+    let songsData = [];           // full list in order for next/prev
+    let currentSongIndex = null;  // index in songsData
 
-  // streaming tracking
-  let currentPlayingSongId = null;
-  let streamReportedForCurrentPlay = false;
+    // streaming tracking
+    let currentPlayingSongId = null;
+    let streamReportedForCurrentPlay = false;
 
 
     function showGlobalMsg(text, kind = "") {
@@ -812,46 +880,45 @@
       });
     }
 
-    function initPlayer() {
-      playerStop.addEventListener("click", () => {
-        audioPlayer.pause();
-        audioPlayer.currentTime = 0;
-        // optional: reset tracking for this play
-        streamReportedForCurrentPlay = true;
-      });
+    function startPlayingSongByIndex(index) {
+      if (!songsData.length) return;
+      if (index < 0 || index >= songsData.length) return;
 
-      // When playback passes 10s for the first time, count a stream
-      audioPlayer.addEventListener("timeupdate", () => {
-      if (
-        currentPlayingSongId &&
-        !streamReportedForCurrentPlay &&
-        audioPlayer.currentTime >= 10
-      ) {
-        streamReportedForCurrentPlay = true;
-        registerStreamPlay(currentPlayingSongId);
-      }
-    });
-}
-
+      currentSongIndex = index;
+      const song = songsData[index];
+      startPlayingSong(song);
+    }
 
     function startPlayingSong(song) {
-  if (!song || !song.audio_url) return;
+      if (!song || !song.audio_url) return;
 
-  // 🔑 Tell the tracker which song is playing
-  currentPlayingSongId = song.id;
-  streamReportedForCurrentPlay = false;
-  audioPlayer.currentTime = 0;
+      // track stream for this song
+      currentPlayingSongId = song.id;
+      streamReportedForCurrentPlay = false;
 
-  audioPlayer.src = song.audio_url;
-  playerTitle.textContent = song.title || "Untitled";
-  playerArtist.textContent = song.artist || "Unknown artist";
-  playerBar.style.display = "flex";
+      // fill player UI
+      playerTitle.textContent = song.title || "Untitled";
+      playerArtist.textContent = song.artist || "Unknown artist";
 
-  audioPlayer.play().catch(err => {
-    console.error("Audio play failed:", err);
-  });
-}
+      if (song.cover_url) {
+        playerCover.src = song.cover_url;
+      } else {
+        playerCover.src = "";
+      }
 
+      // show bar + set audio source
+      playerBar.style.display = "flex";
+      audioPlayer.src = song.audio_url;
+
+      audioPlayer
+        .play()
+        .then(() => {
+          playerPlayPause.textContent = "⏸";
+        })
+        .catch((err) => {
+          console.error("Audio play failed:", err);
+        });
+    }
 
     async function registerStreamPlay(songId) {
       if (!songId) return;
@@ -860,29 +927,95 @@
         const { error } = await supabase.rpc("increment_stream", {
           song_uuid: songId,
         });
-      if (error) {
-        console.error("increment_stream RPC error:", error);
-        return;
-      }
+        if (error) {
+          console.error("increment_stream RPC error:", error);
+          return;
+        }
 
-    // Update local cache
-      const song = songsById.get(songId);
-      if (song) {
-       song.stream_count = (song.stream_count || 0) + 1;
-       songsById.set(songId, song);
+        // Update local cache
+        const song = songsById.get(songId);
+        if (song) {
+          song.stream_count = (song.stream_count || 0) + 1;
+          songsById.set(songId, song);
 
-      // Update text in Songs grid
-      const streamsEl = document.querySelector(
-        `.song-card[data-song-id="${songId}"] .song-streams`
-      );
-      if (streamsEl) {
-        streamsEl.textContent = `${song.stream_count} streams`;
+          // Also update songsData array
+          const idx = songsData.findIndex((s) => s.id === songId);
+          if (idx !== -1) {
+            songsData[idx].stream_count = song.stream_count;
+          }
+
+          // Update text in Songs grid
+          const streamsEl = document.querySelector(
+            `.song-card[data-song-id="${songId}"] .song-streams`
+          );
+          if (streamsEl) {
+            streamsEl.textContent = `${song.stream_count} streams`;
+          }
+        }
+      } catch (err) {
+        console.error("increment_stream RPC failed:", err);
       }
     }
-  } catch (err) {
-    console.error("increment_stream RPC failed:", err);
-  }
-}
+
+
+        function initPlayer() {
+      // time-based streaming credit (after 10s)
+      audioPlayer.addEventListener("timeupdate", () => {
+        if (
+          currentPlayingSongId &&
+          !streamReportedForCurrentPlay &&
+          audioPlayer.currentTime >= 10
+        ) {
+          streamReportedForCurrentPlay = true;
+          registerStreamPlay(currentPlayingSongId);
+        }
+      });
+
+      // Prev / Next / Play-Pause / Replay
+      playerPrev.addEventListener("click", () => {
+        if (currentSongIndex === null) return;
+        const prevIndex = currentSongIndex > 0 ? currentSongIndex - 1 : null;
+        if (prevIndex === null) return;
+        startPlayingSongByIndex(prevIndex);
+      });
+
+      playerNext.addEventListener("click", () => {
+        if (currentSongIndex === null) return;
+        const nextIndex =
+          currentSongIndex < songsData.length - 1 ? currentSongIndex + 1 : null;
+        if (nextIndex === null) return;
+        startPlayingSongByIndex(nextIndex);
+      });
+
+      playerReplay.addEventListener("click", () => {
+        if (!audioPlayer.src) return;
+        audioPlayer.currentTime = 0;
+        audioPlayer.play().catch((err) =>
+          console.error("Replay failed:", err)
+        );
+      });
+
+      playerPlayPause.addEventListener("click", () => {
+        if (!audioPlayer.src) return;
+        if (audioPlayer.paused) {
+          audioPlayer.play().then(() => {
+            playerPlayPause.textContent = "⏸";
+          }).catch((err) => console.error("Play failed:", err));
+        } else {
+          audioPlayer.pause();
+          playerPlayPause.textContent = "▶";
+        }
+      });
+
+      // keep button icon in sync if user uses native controls
+      audioPlayer.addEventListener("play", () => {
+        playerPlayPause.textContent = "⏸";
+      });
+      audioPlayer.addEventListener("pause", () => {
+        playerPlayPause.textContent = "▶";
+      });
+    }
+
 
 
     async function loadProfile(user) {
@@ -1081,7 +1214,7 @@
 }
 
 
-    async function loadSongs() {
+        async function loadSongs() {
       songsGrid.innerHTML = "Loading songs…";
 
       const { data, error } = await supabase
@@ -1096,18 +1229,19 @@
       }
 
       songsById.clear();
-      data.forEach(s => songsById.set(s.id, s));
+      songsData = data || [];
+      songsData.forEach((s) => songsById.set(s.id, s));
 
-      if (!data.length) {
+      if (!songsData.length) {
         songsGrid.textContent = "No songs yet.";
         return;
       }
 
       songsGrid.innerHTML = "";
-      data.forEach(song => {
+      songsData.forEach((song, index) => {
         const card = document.createElement("div");
         card.className = "song-card";
-        card.dataset.songId = song.id; 
+        card.dataset.songId = song.id;
 
         const coverStyle = song.cover_url
           ? `background-image:url('${song.cover_url}');`
@@ -1126,12 +1260,13 @@
         `;
 
         card.querySelector(".song-play-btn").addEventListener("click", () => {
-          startPlayingSong(song);
+          startPlayingSongByIndex(index);
         });
 
         songsGrid.appendChild(card);
       });
     }
+
 
     async function loadFeed() {
       feedEl.innerHTML = "Loading feed…";

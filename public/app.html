@@ -172,12 +172,6 @@
     }
     .user-chip strong { color: #fff; }
 
-    .content {
-      flex: 1;
-      padding: 16px 18px 24px; /* bottom padding so it doesn't sit under the player bar */
-      /* no overflow here so the whole page scrolls */
-    }
-
     section.view {
       display: none;
     }
@@ -532,32 +526,36 @@
 }
 
 
-    /* Now Playing panel (Songs view) */
+  /* Sticky bottom mini player */
 .now-playing {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #050505;
+  border-top: 1px solid var(--border);
+  padding: 8px 12px 10px;
+  display: none;           /* shown via JS */
+  flex-direction: column;
+  gap: 6px;
+  z-index: 40;
+  font-size: 12px;
+}
+
+.np-mini-top {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
-  margin-bottom: 16px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #181818, #050505);
-  border: 1px solid rgba(255,255,255,0.06);
+  justify-content: space-between;
+  gap: 10px;
 }
 
 .now-playing-cover {
-  width: 64px;
-  height: 64px;
-  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
   object-fit: cover;
   background: #222;
   flex-shrink: 0;
-}
-
-.now-playing-meta {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
 }
 
 .now-playing-label {
@@ -568,7 +566,7 @@
 }
 
 .now-playing-title {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
@@ -586,6 +584,54 @@
 .now-playing-streams {
   font-size: 11px;
   color: #888;
+}
+
+.np-mini-progress {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.np-mini-time {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.np-mini-seek {
+  flex: 1;
+}
+
+.np-mini-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  margin-top: 2px;
+}
+
+.np-mini-btn {
+  background: transparent;
+  border: 0;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.np-mini-btn.main {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: #ff4455;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
+/* give page bottom padding so content isn't hidden under the mini player */
+.content {
+  flex: 1;
+  padding: 16px 18px 90px; /* increased bottom padding */
 }
 
 
@@ -815,17 +861,7 @@
             Browse songs available on the platform. Tap a track to start playing.
           </p>
 
-         <!-- Now Playing panel -->
-       <div id="nowPlaying" class="now-playing" style="display:none;">
-       <img id="nowPlayingCover" class="now-playing-cover" src="" alt="Cover" />
-      <div class="now-playing-meta">
-      <div class="now-playing-label">Now playing</div>
-      <div id="nowPlayingTitle" class="now-playing-title">—</div>
-      <div id="nowPlayingArtist" class="now-playing-artist">—</div>
-      <div id="nowPlayingStreams" class="now-playing-streams"></div>
-     </div>
-    </div>
-
+        
     <div id="songsGrid" class="song-grid"></div>
     </section>
 
@@ -865,6 +901,30 @@
 <audio id="audioPlayer" style="display:none;"></audio>
 
 
+  <!-- Sticky bottom mini player -->
+  <div id="nowPlaying" class="now-playing" style="display:none;">
+    <div class="np-mini-top">
+      <div class="np-mini-meta">
+        <div class="now-playing-label">Now playing</div>
+        <div id="nowPlayingTitle" class="now-playing-title">—</div>
+        <div id="nowPlayingArtist" class="now-playing-artist">—</div>
+        <div id="nowPlayingStreams" class="now-playing-streams"></div>
+      </div>
+      <img id="nowPlayingCover" class="now-playing-cover" src="" alt="Cover" />
+    </div>
+
+    <div class="np-mini-progress">
+      <span id="miniCurrentTime" class="np-mini-time">0:00</span>
+      <input id="miniSeek" class="np-mini-seek" type="range" min="0" max="100" value="0" />
+      <span id="miniTotalTime" class="np-mini-time">0:00</span>
+    </div>
+
+    <div class="np-mini-controls">
+      <button id="miniPrev" class="np-mini-btn">⏮</button>
+      <button id="miniPlayPause" class="np-mini-btn main">▶</button>
+      <button id="miniNext" class="np-mini-btn">⏭</button>
+    </div>
+  </div>
 
   <!-- Auth overlay -->
   <div class="auth-overlay" id="authOverlay" style="display:none;">
@@ -930,6 +990,13 @@
     const sidebarCredits = $("sidebarCredits");
     const btnSignOut = $("btnSignOut");
     const topTitle = $("topTitle");
+
+    const miniCurrentTime = $("miniCurrentTime");
+    const miniTotalTime   = $("miniTotalTime");
+    const miniSeek        = $("miniSeek");
+    const miniPrev        = $("miniPrev");
+    const miniNext        = $("miniNext");
+    const miniPlayPause   = $("miniPlayPause");
 
     const feedEl = $("feed");
     const songsGrid = $("songsGrid");
@@ -1010,10 +1077,12 @@ function startPlayingSong(song) {
   .play()
   .then(() => {
     npfPlayPause.textContent = "⏸";
+    if (miniPlayPause) miniPlayPause.textContent = "⏸";
 
     // show full-screen when a song starts
     nowPlayingFull.style.display = "flex";
     isNowPlayingOpen = true;
+
 
     // push a state so that the browser back button can close it
     history.pushState({ nowPlaying: true }, "");
@@ -1119,19 +1188,21 @@ function initPlayer() {
       registerStreamPlay(currentPlayingSongId);
     }
 
-    // update full-screen times + slider
     const dur = audioPlayer.duration || 0;
     const cur = audioPlayer.currentTime || 0;
+
+    // full-screen times + slider
     npfCurrentTime.textContent = formatTime(cur);
     npfTotalTime.textContent = formatTime(dur);
-    if (dur > 0) {
-      npfSeek.value = (cur / dur) * 100;
-    } else {
-      npfSeek.value = 0;
-    }
+    npfSeek.value = dur > 0 ? (cur / dur) * 100 : 0;
+
+    // mini times + slider
+    if (miniCurrentTime) miniCurrentTime.textContent = formatTime(cur);
+    if (miniTotalTime)   miniTotalTime.textContent   = formatTime(dur);
+    if (miniSeek)        miniSeek.value = dur > 0 ? (cur / dur) * 100 : 0;
   });
 
-  // Seek from slider
+  // Full-screen seek
   npfSeek.addEventListener("input", () => {
     const dur = audioPlayer.duration || 0;
     if (!dur) return;
@@ -1139,7 +1210,18 @@ function initPlayer() {
     audioPlayer.currentTime = dur * pct;
   });
 
-  // Prev button
+  // Mini seek
+  if (miniSeek) {
+    miniSeek.addEventListener("input", (e) => {
+      e.stopPropagation(); // so dragging doesn’t open full screen
+      const dur = audioPlayer.duration || 0;
+      if (!dur) return;
+      const pct = Number(miniSeek.value || 0) / 100;
+      audioPlayer.currentTime = dur * pct;
+    });
+  }
+
+  // Prev/next (full-screen)
   npfPrev.addEventListener("click", () => {
     if (currentSongIndex == null) return;
     const prevIndex = currentSongIndex > 0 ? currentSongIndex - 1 : null;
@@ -1147,7 +1229,6 @@ function initPlayer() {
     startPlayingSongByIndex(prevIndex);
   });
 
-  // Next button
   npfNext.addEventListener("click", () => {
     if (currentSongIndex == null) return;
     const nextIndex =
@@ -1155,6 +1236,28 @@ function initPlayer() {
     if (nextIndex == null) return;
     startPlayingSongByIndex(nextIndex);
   });
+
+  // Prev/next (mini)
+  if (miniPrev) {
+    miniPrev.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (currentSongIndex == null) return;
+      const prevIndex = currentSongIndex > 0 ? currentSongIndex - 1 : null;
+      if (prevIndex == null) return;
+      startPlayingSongByIndex(prevIndex);
+    });
+  }
+
+  if (miniNext) {
+    miniNext.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (currentSongIndex == null) return;
+      const nextIndex =
+        currentSongIndex < songsData.length - 1 ? currentSongIndex + 1 : null;
+      if (nextIndex == null) return;
+      startPlayingSongByIndex(nextIndex);
+    });
+  }
 
   // Play/pause in full-screen
   npfPlayPause.addEventListener("click", () => {
@@ -1169,41 +1272,55 @@ function initPlayer() {
     }
   });
 
-  // Sync icon with actual audio state
+  // Play/pause in mini
+  if (miniPlayPause) {
+    miniPlayPause.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (!audioPlayer.src) return;
+      if (audioPlayer.paused) {
+        audioPlayer.play().then(() => {
+          miniPlayPause.textContent = "⏸";
+          npfPlayPause.textContent  = "⏸";
+        });
+      } else {
+        audioPlayer.pause();
+        miniPlayPause.textContent = "▶";
+        npfPlayPause.textContent  = "▶";
+      }
+    });
+  }
+
+  // Sync icons with audio state
   audioPlayer.addEventListener("play", () => {
     npfPlayPause.textContent = "⏸";
+    if (miniPlayPause) miniPlayPause.textContent = "⏸";
   });
   audioPlayer.addEventListener("pause", () => {
     npfPlayPause.textContent = "▶";
+    if (miniPlayPause) miniPlayPause.textContent = "▶";
   });
 
-  // Mini player click -> open full-screen
+  // Mini bar click -> open full-screen (but not when pressing controls)
   if (nowPlaying) {
-  nowPlaying.addEventListener("click", () => {
-    if (!audioPlayer.src) return;
+    nowPlaying.addEventListener("click", () => {
+      if (!audioPlayer.src) return;
+      nowPlayingFull.style.display = "flex";
+      if (!isNowPlayingOpen) {
+        isNowPlayingOpen = true;
+        history.pushState({ nowPlaying: true }, "");
+      }
+    });
+  }
 
-    nowPlayingFull.style.display = "flex";
-
-    if (!isNowPlayingOpen) {
-      isNowPlayingOpen = true;
-      history.pushState({ nowPlaying: true }, "");
+  // Close full-screen, keep mini visible
+  npfClose.addEventListener("click", () => {
+    nowPlayingFull.style.display = "none";
+    isNowPlayingOpen = false;
+    if (audioPlayer.src) {
+      nowPlaying.style.display = "flex";
     }
   });
 }
-
-
-  // Close full-screen -> keep audio playing, show mini
- npfClose.addEventListener("click", () => {
-  nowPlayingFull.style.display = "none";
-  isNowPlayingOpen = false;
-  if (audioPlayer.src) {
-    nowPlaying.style.display = "flex";
-  }
-});
-
-}
-
-
 
     async function loadProfile(user) {
   // 1) Load base user info
@@ -1518,89 +1635,193 @@ function initPlayer() {
           ${songTagHtml}
         `;
 
-        if (song) {
-          const btn = div.querySelector("button[data-song-id]");
-          if (btn) {
-            btn.addEventListener("click", () => startPlayingSong(song));
-          }
-        }
+      if (song) {
+  const btn = div.querySelector("button[data-song-id]");
+  if (btn) {
+    btn.addEventListener("click", () => {
+      // find index of this song in songsData
+      const idx = songsData.findIndex((s) => s.id === song.id);
+      if (idx !== -1) {
+        currentSongIndex = idx;
+      }
+      startPlayingSong(song);
+    });
+  }
+}
+
 
         feedEl.appendChild(div);
       });
     }
 
-    async function loadShop() {
-      copiesList.innerHTML = "Loading song copies…";
+    async function handleBuyCopy(copy) {
+  if (!currentSession || !currentSession.user) {
+    showGlobalMsg("You must be signed in to buy copies.", "error");
+    return;
+  }
 
-      const { data: copies, error: copiesErr } = await supabase
-        .from("song_copies")
-        .select("id, song_id, listing_price, is_listed, created_at, owner")
-        .eq("is_listed", true)
-        .order("created_at", { ascending: false })
-        .limit(50);
+  const buyerId = currentSession.user.id;
+  const price = copy.listing_price ?? 0;
 
-      if (copiesErr) {
-        console.error("Copies error:", copiesErr);
-        copiesList.textContent = "Could not load song copies.";
-      } else if (!copies.length) {
-        copiesList.textContent = "No song copies listed yet.";
-      } else {
-        copiesList.innerHTML = "";
-        copies.forEach(copy => {
-          const song = songsById.get(copy.song_id);
-          const div = document.createElement("div");
-          div.className = "copy-card";
+  if (!price || price <= 0) {
+    showGlobalMsg("This copy is not priced yet.", "error");
+    return;
+  }
 
-          const title = song?.title || "Untitled";
-          const artist = song?.artist || "Unknown artist";
+  // Optional: simple confirm
+  const ok = confirm(`Buy this copy for ${price} credits?`);
+  if (!ok) return;
 
-          div.innerHTML = `
-            <div class="copy-song">${title}</div>
-            <div class="copy-meta">${artist}</div>
-            <div class="copy-meta">Price: <strong>${copy.listing_price ?? 0} credits</strong></div>
-            <button class="copy-cta disabled">Buy (web coming soon)</button>
-          `;
-          copiesList.appendChild(div);
+  try {
+    const { data, error } = await supabase.rpc("buy_song_copy_by_user", {
+      buyer_uuid: buyerId,
+      copy_uuid: copy.id,
+      price_input: price,
+    });
+
+    if (error) {
+      console.error("buy_song_copy_by_user RPC error:", error);
+      showGlobalMsg("Purchase failed. Please try again.", "error");
+      return;
+    }
+
+    // data is the TEXT returned from your SQL function
+    if (data === "Not enough credits") {
+      showGlobalMsg("Not enough credits to complete this purchase.", "error");
+      return;
+    }
+    if (data === "Copy not available") {
+      showGlobalMsg("This copy is no longer available.", "error");
+      return;
+    }
+    if (data !== "Purchase successful") {
+      console.warn("Unexpected response:", data);
+      showGlobalMsg(String(data), "error");
+      return;
+    }
+
+    // ✅ Success
+    showGlobalMsg("Purchase successful! Updating your balance…", "success");
+
+    // Reload everything so:
+    // - credits update
+    // - copies list updates
+    // - profile stats update
+    await loadEverything(currentSession.user);
+  } catch (err) {
+    console.error("Purchase failed:", err);
+    showGlobalMsg("Something went wrong during purchase.", "error");
+  }
+}
+
+async function loadShop() {
+  copiesList.innerHTML = "Loading song copies…";
+
+  const { data: copies, error: copiesErr } = await supabase
+    .from("song_copies")
+    .select("id, song_id, listing_price, is_listed, created_at, owner")
+    .eq("is_listed", true)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (copiesErr) {
+    console.error("Copies error:", copiesErr);
+    copiesList.textContent = "Could not load song copies.";
+    return;
+  }
+
+  if (!copies || !copies.length) {
+    copiesList.textContent = "No song copies listed yet.";
+    // we STILL want to show products, so don't return here
+  } else {
+    // 🔹 fetch remaining copies per song from the view
+    const uniqueSongIds = [...new Set(copies.map(c => c.song_id).filter(Boolean))];
+
+    let remainingBySongId = new Map();
+    if (uniqueSongIds.length) {
+      const { data: remainingRows, error: remainingErr } = await supabase
+        .from("songs_with_remaining")
+        .select("id, remaining_copies")
+        .in("id", uniqueSongIds);
+
+      if (remainingErr) {
+        console.error("Remaining copies load error:", remainingErr);
+      } else if (remainingRows) {
+        remainingRows.forEach(row => {
+          remainingBySongId.set(row.id, row.remaining_copies || 0);
         });
       }
-
-      productGrid.innerHTML = "Loading products…";
-
-      const { data: products, error: productsErr } = await supabase
-        .from("products")
-        .select("id, name, description, price_cents, in_stock, image_url")
-        .eq("in_stock", true)
-        .order("created_at", { ascending: false });
-
-      if (productsErr) {
-        console.error("Products error:", productsErr);
-        productGrid.textContent = "Could not load products.";
-        return;
-      }
-
-      if (!products.length) {
-        productGrid.textContent = "No products available.";
-        return;
-      }
-
-      productGrid.innerHTML = "";
-      products.forEach(p => {
-        const card = document.createElement("div");
-        card.className = "product-card";
-
-        const imgUrl = p.image_url || "";
-
-        card.innerHTML = `
-          ${imgUrl ? `<img src="${imgUrl}" alt="${p.name}" class="product-thumb" />` : `<div class="product-thumb"></div>`}
-          <div class="product-name">${p.name}</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:2px;">${p.description || ""}</div>
-          <div class="product-price" style="margin-top:4px;">${p.price_cents ?? 0} credits</div>
-          <button class="product-cta disabled">Buy (web coming soon)</button>
-        `;
-
-        productGrid.appendChild(card);
-      });
     }
+
+    copiesList.innerHTML = "";
+    copies.forEach(copy => {
+      const song = songsById.get(copy.song_id);
+      const div = document.createElement("div");
+      div.className = "copy-card";
+
+      const title = song?.title || "Untitled";
+      const artist = song?.artist || "Unknown artist";
+      const remaining = remainingBySongId.get(copy.song_id) ?? "—";
+
+      div.innerHTML = `
+        <div class="copy-song">${title}</div>
+        <div class="copy-meta">${artist}</div>
+        <div class="copy-meta">
+          Price: <strong>${copy.listing_price ?? 0} credits</strong>
+        </div>
+        <div class="copy-meta">
+          Remaining copies: <strong>${remaining}</strong>
+        </div>
+        <button class="copy-cta">Buy copy</button>
+      `;
+
+      const btn = div.querySelector(".copy-cta");
+      btn.addEventListener("click", () => {
+        handleBuyCopy(copy);
+      });
+
+      copiesList.appendChild(div);
+    });
+  }
+
+  // ✅ PRODUCTS PART STAYS INSIDE loadShop
+  productGrid.innerHTML = "Loading products…";
+
+  const { data: products, error: productsErr } = await supabase
+    .from("products")
+    .select("id, name, description, price_cents, in_stock, image_url")
+    .eq("in_stock", true)
+    .order("created_at", { ascending: false });
+
+  if (productsErr) {
+    console.error("Products error:", productsErr);
+    productGrid.textContent = "Could not load products.";
+    return;
+  }
+
+  if (!products.length) {
+    productGrid.textContent = "No products available.";
+    return;
+  }
+
+  productGrid.innerHTML = "";
+  products.forEach(p => {
+    const card = document.createElement("div");
+    card.className = "product-card";
+
+    const imgUrl = p.image_url || "";
+
+    card.innerHTML = `
+      ${imgUrl ? `<img src="${imgUrl}" alt="${p.name}" class="product-thumb" />` : `<div class="product-thumb"></div>`}
+      <div class="product-name">${p.name}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px;">${p.description || ""}</div>
+      <div class="product-price" style="margin-top:4px;">${p.price_cents ?? 0} credits</div>
+      <button class="product-cta disabled">Buy (web coming soon)</button>
+    `;
+
+    productGrid.appendChild(card);
+  });
+}
 
     async function loadEverything(user) {
       showGlobalMsg("Loading your data…");

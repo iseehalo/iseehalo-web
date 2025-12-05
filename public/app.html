@@ -1129,17 +1129,18 @@ function startPlayingSong(song) {
   currentPlayingSongId = song.id;
   streamReportedForCurrentPlay = false;
 
-  // update all UIs
+  // update full-screen UI
   applySongToUI(song);
 
-  // show bottom bar and full audio source
-  playerBar.style.display = "flex";
+  // show full-screen Now Playing
+  nowPlayingFull.style.display = "flex";
+
+  // load & play audio (audio element can stay in the hidden bar)
   audioPlayer.src = song.audio_url;
 
   audioPlayer
     .play()
     .then(() => {
-      playerPlayPause.textContent = "⏸";
       npfPlayPause.textContent = "⏸";
     })
     .catch((err) => console.error("Audio play failed:", err));
@@ -1212,27 +1213,12 @@ function applySongToUI(song) {
   const cover = song.cover_url || "";
   const streamsText = `${song.stream_count || 0} streams`;
 
-  // bottom bar
-  playerTitle.textContent = title;
-  playerArtist.textContent = artist;
-  playerCover.src = cover || "";
-
-  // mini Now Playing (if you have it)
-  if (nowPlaying) {
-    nowPlaying.style.display = "flex";
-    nowPlayingTitle.textContent = title;
-    nowPlayingArtist.textContent = artist;
-    nowPlayingStreams.textContent = streamsText;
-    if (nowPlayingCover) nowPlayingCover.src = cover || "";
-  }
-
   // full-screen view
   npfTitle.textContent = title;
   npfArtist.textContent = artist;
   npfStreams.textContent = streamsText;
   npfCover.src = cover || "";
 }
-
 
 
 
@@ -1307,12 +1293,6 @@ function applySongToUI(song) {
   audioPlayer.addEventListener("pause", () => {
     npfPlayPause.textContent = "▶";
     playerPlayPause.textContent = "▶";
-  });
-
-  // open full-screen when user taps the bottom bar (except exact audio element)
-  playerBar.addEventListener("click", (e) => {
-    if (e.target.tagName.toLowerCase() === "audio") return;
-    nowPlayingFull.style.display = "flex";
   });
 
   // close full-screen

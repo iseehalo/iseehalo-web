@@ -1750,16 +1750,24 @@ function applySongToUI(song) {
         location.href = "/auth.html";
       });
 
-      supabase.auth.onAuthStateChange(async (_event, session) => {
-        if (!session) {
-          authOverlay.style.display = "flex";
-        } else {
-          authOverlay.style.display = "none";
-          currentSession = session;
-          userChip.innerHTML = `Signed in as <strong>${session.user.email}</strong>`;
-          await loadEverything(session.user);
-        }
-      });
+      supabase.auth.onAuthStateChange(async (event, session) => {
+  if (event === "SIGNED_OUT") {
+    authOverlay.style.display = "flex";
+    currentSession = null;
+    userChip.innerHTML = `Signed in as <strong>—</strong>`;
+    return;
+  }
+
+  if (event === "SIGNED_IN") {
+    authOverlay.style.display = "none";
+    currentSession = session;
+    userChip.innerHTML = `Signed in as <strong>${session.user.email}</strong>`;
+    await loadEverything(session.user);
+  }
+
+  // Ignore TOKEN_REFRESHED, INITIAL_SESSION, etc.
+});
+
     }
 
     initApp();

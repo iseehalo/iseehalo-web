@@ -174,7 +174,7 @@
 
     .content {
       flex: 1;
-      padding: 16px 18px 90px; /* bottom padding so it doesn't sit under the player bar */
+      padding: 16px 18px 24px; /* bottom padding so it doesn't sit under the player bar */
       /* no overflow here so the whole page scrolls */
     }
 
@@ -531,113 +531,6 @@
   text-align: right;
 }
 
-    /* Player bar*/
-
-    .player-bar {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: #050505;
-      border-top: 1px solid var(--border);
-      padding: 8px 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      font-size: 12px;
-      z-index: 20;
-    }
-
-    .player-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      min-width: 0;
-    }
-
-    .player-cover {
-      width: 40px;
-      height: 40px;
-      border-radius: 8px;
-      object-fit: cover;
-      background: #222;
-      flex-shrink: 0;
-    }
-
-    .player-meta {
-      display: flex;
-      flex-direction: column;
-      max-width: 180px;
-    }
-
-    .player-title {
-      font-weight: 600;
-      font-size: 13px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .player-artist {
-      color: var(--muted);
-      font-size: 11px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .player-center {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .player-btn {
-      border-radius: 999px;
-      border: 0;
-      padding: 4px 8px;
-      font-size: 12px;
-      cursor: pointer;
-      background: #222;
-      color: #eee;
-    }
-
-    .player-btn.main {
-      background: #1DB954;
-      color: #000;
-      font-weight: 600;
-      padding: 4px 12px;
-    }
-
-    .player-right {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      flex: 1;
-    }
-
-    .player-right audio {
-      width: 180px;
-      max-width: 40vw;
-    }
-
-    @media (max-width: 600px) {
-      .player-bar {
-        flex-direction: column;
-        align-items: stretch;
-      }
-      .player-left {
-        width: 100%;
-      }
-      .player-meta {
-        max-width: none;
-      }
-      .player-right audio {
-        width: 100%;
-        max-width: 100%;
-      }
-    }
 
     /* Now Playing panel (Songs view) */
 .now-playing {
@@ -968,27 +861,9 @@
     </main>
   </div>
 
-    <!-- Player bar -->
-  <div class="player-bar" id="playerBar" style="display:none;">
-    <div class="player-left">
-      <img id="playerCover" class="player-cover" src="" alt="Cover" />
-      <div class="player-meta">
-        <div class="player-title" id="playerTitle">—</div>
-        <div class="player-artist" id="playerArtist">—</div>
-      </div>
-    </div>
+<!-- Hidden audio element, controlled by JS + full-screen UI -->
+<audio id="audioPlayer" style="display:none;"></audio>
 
-    <div class="player-center">
-      <button class="player-btn" id="playerPrev">⏮</button>
-      <button class="player-btn main" id="playerPlayPause">▶</button>
-      <button class="player-btn" id="playerNext">⏭</button>
-      <button class="player-btn" id="playerReplay">🔁</button>
-    </div>
-
-    <div class="player-right">
-      <audio id="audioPlayer"></audio>
-    </div>
-  </div>
 
 
   <!-- Auth overlay -->
@@ -1061,7 +936,6 @@
     const copiesList = $("copiesList");
     const productGrid = $("productGrid");
     const profileCard = $("profileCard");
-    const playerBar = $("playerBar");
     const nowPlaying = $("nowPlaying");
     const nowPlayingCover = $("nowPlayingCover");
     const nowPlayingTitle = $("nowPlayingTitle");
@@ -1080,14 +954,8 @@
     const npfNext = $("npfNext");
     const npfPlayPause = $("npfPlayPause");
     const audioPlayer = $("audioPlayer");
-    const playerTitle = $("playerTitle");
-    const playerArtist = $("playerArtist");
-    const playerCover = $("playerCover");
-    const playerPrev = $("playerPrev");
-    const playerNext = $("playerNext");
-    const playerPlayPause = $("playerPlayPause");
-    const playerReplay = $("playerReplay");
-
+ 
+    
     let currentSession = null;
     let currentUserRow = null;
     let songsById = new Map();
@@ -1097,6 +965,9 @@
     // streaming tracking
     let currentPlayingSongId = null;
     let streamReportedForCurrentPlay = false;
+
+    // NEW: track if full-screen Now Playing is open
+    let isNowPlayingOpen = false;
 
 
     function showGlobalMsg(text, kind = "") {
@@ -1129,22 +1000,28 @@ function startPlayingSong(song) {
   currentPlayingSongId = song.id;
   streamReportedForCurrentPlay = false;
 
-  // update full-screen UI
+  // update mini + full-screen UI
   applySongToUI(song);
 
-  // show full-screen Now Playing
-  nowPlayingFull.style.display = "flex";
-
-  // load & play audio (audio element can stay in the hidden bar)
+  // set audio source and play
   audioPlayer.src = song.audio_url;
 
   audioPlayer
-    .play()
-    .then(() => {
-      npfPlayPause.textContent = "⏸";
-    })
-    .catch((err) => console.error("Audio play failed:", err));
+  .play()
+  .then(() => {
+    npfPlayPause.textContent = "⏸";
+
+    // show full-screen when a song starts
+    nowPlayingFull.style.display = "flex";
+    isNowPlayingOpen = true;
+
+    // push a state so that the browser back button can close it
+    history.pushState({ nowPlaying: true }, "");
+  })
+  .catch((err) => console.error("Audio play failed:", err));
+
 }
+
 
 function startPlayingSongByIndex(index) {
   if (!songsData || index < 0 || index >= songsData.length) return;
@@ -1213,6 +1090,15 @@ function applySongToUI(song) {
   const cover = song.cover_url || "";
   const streamsText = `${song.stream_count || 0} streams`;
 
+  // mini Now Playing panel in Songs view
+  if (nowPlaying) {
+    nowPlaying.style.display = "flex";
+    nowPlayingTitle.textContent = title;
+    nowPlayingArtist.textContent = artist;
+    nowPlayingStreams.textContent = streamsText;
+    if (nowPlayingCover) nowPlayingCover.src = cover || "";
+  }
+
   // full-screen view
   npfTitle.textContent = title;
   npfArtist.textContent = artist;
@@ -1220,10 +1106,8 @@ function applySongToUI(song) {
   npfCover.src = cover || "";
 }
 
-
-
-        function initPlayer() {
-  // stream tracking + progress bar
+function initPlayer() {
+  // Track time + progress + streams
   audioPlayer.addEventListener("timeupdate", () => {
     // 10s stream credit
     if (
@@ -1235,7 +1119,7 @@ function applySongToUI(song) {
       registerStreamPlay(currentPlayingSongId);
     }
 
-    // update time + slider
+    // update full-screen times + slider
     const dur = audioPlayer.duration || 0;
     const cur = audioPlayer.currentTime || 0;
     npfCurrentTime.textContent = formatTime(cur);
@@ -1247,7 +1131,7 @@ function applySongToUI(song) {
     }
   });
 
-  // seek from slider
+  // Seek from slider
   npfSeek.addEventListener("input", () => {
     const dur = audioPlayer.duration || 0;
     if (!dur) return;
@@ -1255,7 +1139,7 @@ function applySongToUI(song) {
     audioPlayer.currentTime = dur * pct;
   });
 
-  // prev / next / replay-style controls
+  // Prev button
   npfPrev.addEventListener("click", () => {
     if (currentSongIndex == null) return;
     const prevIndex = currentSongIndex > 0 ? currentSongIndex - 1 : null;
@@ -1263,6 +1147,7 @@ function applySongToUI(song) {
     startPlayingSongByIndex(prevIndex);
   });
 
+  // Next button
   npfNext.addEventListener("click", () => {
     if (currentSongIndex == null) return;
     const nextIndex =
@@ -1271,34 +1156,51 @@ function applySongToUI(song) {
     startPlayingSongByIndex(nextIndex);
   });
 
+  // Play/pause in full-screen
   npfPlayPause.addEventListener("click", () => {
     if (!audioPlayer.src) return;
     if (audioPlayer.paused) {
       audioPlayer.play().then(() => {
         npfPlayPause.textContent = "⏸";
-        playerPlayPause.textContent = "⏸";
       });
     } else {
       audioPlayer.pause();
       npfPlayPause.textContent = "▶";
-      playerPlayPause.textContent = "▶";
     }
   });
 
-  // keep full-screen + bar icons in sync with actual audio state
+  // Sync icon with actual audio state
   audioPlayer.addEventListener("play", () => {
     npfPlayPause.textContent = "⏸";
-    playerPlayPause.textContent = "⏸";
   });
   audioPlayer.addEventListener("pause", () => {
     npfPlayPause.textContent = "▶";
-    playerPlayPause.textContent = "▶";
   });
 
-  // close full-screen
-  npfClose.addEventListener("click", () => {
-    nowPlayingFull.style.display = "none";
+  // Mini player click -> open full-screen
+  if (nowPlaying) {
+  nowPlaying.addEventListener("click", () => {
+    if (!audioPlayer.src) return;
+
+    nowPlayingFull.style.display = "flex";
+
+    if (!isNowPlayingOpen) {
+      isNowPlayingOpen = true;
+      history.pushState({ nowPlaying: true }, "");
+    }
   });
+}
+
+
+  // Close full-screen -> keep audio playing, show mini
+ npfClose.addEventListener("click", () => {
+  nowPlayingFull.style.display = "none";
+  isNowPlayingOpen = false;
+  if (audioPlayer.src) {
+    nowPlaying.style.display = "flex";
+  }
+});
+
 }
 
 
@@ -1736,6 +1638,19 @@ function applySongToUI(song) {
       return user;
     }
 
+    // Handle browser back button for Now Playing overlay
+window.addEventListener("popstate", () => {
+  if (isNowPlayingOpen) {
+    nowPlayingFull.style.display = "none";
+    isNowPlayingOpen = false;
+
+    if (audioPlayer.src) {
+      nowPlaying.style.display = "flex";
+    }
+  }
+});
+
+
     async function initApp() {
       initNav();
       initPlayer();
@@ -1764,7 +1679,6 @@ function applySongToUI(song) {
     userChip.innerHTML = `Signed in as <strong>${session.user.email}</strong>`;
     await loadEverything(session.user);
   }
-
   // Ignore TOKEN_REFRESHED, INITIAL_SESSION, etc.
 });
 

@@ -1037,10 +1037,28 @@
     let isNowPlayingOpen = false;
 
 
-    function showGlobalMsg(text, kind = "") {
-      globalMsg.textContent = text || "";
-      globalMsg.className = "msg" + (kind ? " " + kind : "");
-    }
+   let globalMsgTimeout = null;
+
+function showGlobalMsg(text, kind = "", durationMs = null) {
+  // Clear any previous timeout so they don't fight each other
+  if (globalMsgTimeout) {
+    clearTimeout(globalMsgTimeout);
+    globalMsgTimeout = null;
+  }
+
+  globalMsg.textContent = text || "";
+  globalMsg.className = "msg" + (kind ? " " + kind : "");
+
+  // If we passed a duration, auto-clear after that time
+  if (text && durationMs) {
+    globalMsgTimeout = setTimeout(() => {
+      globalMsg.textContent = "";
+      globalMsg.className = "msg";
+      globalMsgTimeout = null;
+    }, durationMs);
+  }
+}
+
 
     function setView(view) {
       document.querySelectorAll("section.view").forEach(sec => {
@@ -1687,11 +1705,11 @@ function initPlayer() {
 
     // data is the TEXT returned from your SQL function
     if (data === "Not enough credits") {
-      showGlobalMsg("Not enough credits to complete this purchase.", "error");
-      return;
-    }
+  showGlobalMsg("Not enough credits to complete this purchase.", "error", 4000);
+  return;
+}
     if (data === "Copy not available") {
-      showGlobalMsg("This copy is no longer available.", "error");
+      showGlobalMsg("This copy is no longer available.", "error", 4000);
       return;
     }
     if (data !== "Purchase successful") {

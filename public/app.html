@@ -229,6 +229,36 @@
       color: var(--accent);
     }
 
+    /*   Toast notification */
+    .toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(40px);
+  background: #222;
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.35s ease;
+  z-index: 9999;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+.toast.error {
+  background: #b71c1c;
+}
+.toast.success {
+  background: #1db954;
+}
+
+
     /* Songs */
 
     .song-grid {
@@ -1059,6 +1089,18 @@ function showGlobalMsg(text, kind = "", durationMs = null) {
   }
 }
 
+function showToast(message, type = "success", duration = 2500) {
+  const toast = document.getElementById("toast");
+  toast.textContent = message;
+  toast.className = "toast " + type; // apply type-specific styling
+  toast.classList.add("show");
+
+  setTimeout(() => {
+    toast.classList.remove("show");
+  }, duration);
+}
+
+
 
     function setView(view) {
       document.querySelectorAll("section.view").forEach(sec => {
@@ -1704,12 +1746,13 @@ function initPlayer() {
     }
 
     // data is the TEXT returned from your SQL function
-    if (data === "Not enough credits") {
-  showGlobalMsg("Not enough credits to complete this purchase.", "error", 4000);
+   if (data === "Not enough credits") {
+  showToast("You don't have enough credits.", "error");
   return;
 }
+
     if (data === "Copy not available") {
-      showGlobalMsg("This copy is no longer available.", "error", 4000);
+      showToast("This copy is no longer available.", "error");
       return;
     }
     if (data !== "Purchase successful") {
@@ -1719,7 +1762,8 @@ function initPlayer() {
     }
 
     // ✅ Success
-    showGlobalMsg("Purchase successful! Updating your balance…", "success");
+    showToast("Purchase successful!", "success");
+
 
     // Reload everything so:
     // - credits update
@@ -1925,6 +1969,9 @@ window.addEventListener("popstate", () => {
 
     initApp();
   </script>
+
+    <!-- ✅ Toast Notification Element -->
+  <div id="toast" class="toast"></div>
 </body>
 </html>
 

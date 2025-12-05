@@ -696,6 +696,127 @@
 }
 
 
+    /* Now Playing panel (Songs view) */
+.now-playing-full {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at top, #2c0c0c 0, #000 60%);
+  display: none;              /* shown via JS */
+  flex-direction: column;
+  padding: 16px 20px 24px;
+  z-index: 50;
+  color: #fff;
+}
+
+.now-playing-full-inner {
+  max-width: 480px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.npf-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 14px;
+}
+
+.npf-header-btn {
+  background: transparent;
+  border: 0;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.npf-header-title {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+
+.npf-cover-wrap {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.npf-cover {
+  width: min(340px, 90vw);
+  aspect-ratio: 1 / 1;
+  border-radius: 24px;
+  object-fit: cover;
+  background: #222;
+}
+
+.npf-track-meta {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.npf-track-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.npf-track-artist {
+  font-size: 13px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.npf-track-streams {
+  font-size: 11px;
+  color: #d0d0d0;
+  margin-top: 4px;
+}
+
+.npf-progress {
+  margin-top: 18px;
+}
+
+.npf-times {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.npf-seek {
+  width: 100%;
+}
+
+.npf-controls {
+  margin-top: 22px;
+  display: flex;
+  justify-content: center;
+  gap: 22px;
+  align-items: center;
+}
+
+.npf-ctrl-btn {
+  background: transparent;
+  border: 0;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.npf-ctrl-btn.main {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #ff4455;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+}
+
 
     /* Auth overlay */
 
@@ -884,6 +1005,42 @@
     </div>
   </div>
 
+    <!-- Full-screen Now Playing overlay -->
+  <div id="nowPlayingFull" class="now-playing-full">
+    <div class="now-playing-full-inner">
+      <div class="npf-header">
+        <button id="npfClose" class="npf-header-btn">←</button>
+        <div class="npf-header-title">Now Playing</div>
+        <button id="npfLike" class="npf-header-btn">♡</button>
+      </div>
+
+      <div class="npf-cover-wrap">
+        <img id="npfCover" class="npf-cover" src="" alt="Cover" />
+      </div>
+
+      <div class="npf-track-meta">
+        <div id="npfTitle" class="npf-track-title">—</div>
+        <div id="npfArtist" class="npf-track-artist">—</div>
+        <div id="npfStreams" class="npf-track-streams"></div>
+      </div>
+
+      <div class="npf-progress">
+        <div class="npf-times">
+          <span id="npfCurrentTime">0:00</span>
+          <span id="npfTotalTime">0:00</span>
+        </div>
+        <input id="npfSeek" class="npf-seek" type="range" min="0" max="100" value="0" />
+      </div>
+
+      <div class="npf-controls">
+        <button id="npfPrev" class="npf-ctrl-btn">⏮</button>
+        <button id="npfPlayPause" class="npf-ctrl-btn main">▶</button>
+        <button id="npfNext" class="npf-ctrl-btn">⏭</button>
+      </div>
+    </div>
+  </div>
+
+
   <!-- Supabase client -->
   <script type="module" src="/js/supabaseClient.js"></script>
 
@@ -910,6 +1067,18 @@
     const nowPlayingTitle = $("nowPlayingTitle");
     const nowPlayingArtist = $("nowPlayingArtist");
     const nowPlayingStreams = $("nowPlayingStreams");
+    const nowPlayingFull = $("nowPlayingFull");
+    const npfClose = $("npfClose");
+    const npfCover = $("npfCover");
+    const npfTitle = $("npfTitle");
+    const npfArtist = $("npfArtist");
+    const npfStreams = $("npfStreams");
+    const npfSeek = $("npfSeek");
+    const npfCurrentTime = $("npfCurrentTime");
+    const npfTotalTime = $("npfTotalTime");
+    const npfPrev = $("npfPrev");
+    const npfNext = $("npfNext");
+    const npfPlayPause = $("npfPlayPause");
     const audioPlayer = $("audioPlayer");
     const playerTitle = $("playerTitle");
     const playerArtist = $("playerArtist");
@@ -954,54 +1123,35 @@
         });
       });
     }
-
-    function startPlayingSongByIndex(index) {
-      if (!songsData.length) return;
-      if (index < 0 || index >= songsData.length) return;
-
-      currentSongIndex = index;
-      const song = songsData[index];
-      startPlayingSong(song);
-    }
-
-    function startPlayingSong(song) {
+function startPlayingSong(song) {
   if (!song || !song.audio_url) return;
 
-  // track stream for this song
   currentPlayingSongId = song.id;
   streamReportedForCurrentPlay = false;
 
-  // --- bottom player bar ---
-  playerTitle.textContent = song.title || "Untitled";
-  playerArtist.textContent = song.artist || "Unknown artist";
-  if (song.cover_url) {
-    playerCover.src = song.cover_url;
-  } else {
-    playerCover.src = "";
-  }
+  // update all UIs
+  applySongToUI(song);
+
+  // show bottom bar and full audio source
   playerBar.style.display = "flex";
   audioPlayer.src = song.audio_url;
-
-  // --- now playing panel in Songs view ---
-  nowPlaying.style.display = "flex";
-  nowPlayingTitle.textContent = song.title || "Untitled";
-  nowPlayingArtist.textContent = song.artist || "Unknown artist";
-  nowPlayingStreams.textContent = `${song.stream_count || 0} streams`;
-  if (song.cover_url) {
-    nowPlayingCover.src = song.cover_url;
-  } else {
-    nowPlayingCover.src = "";
-  }
 
   audioPlayer
     .play()
     .then(() => {
       playerPlayPause.textContent = "⏸";
+      npfPlayPause.textContent = "⏸";
     })
-    .catch((err) => {
-      console.error("Audio play failed:", err);
-    });
+    .catch((err) => console.error("Audio play failed:", err));
 }
+
+function startPlayingSongByIndex(index) {
+  if (!songsData || index < 0 || index >= songsData.length) return;
+  currentSongIndex = index;
+  const song = songsData[index];
+  startPlayingSong(song);
+}
+
 
 
     async function registerStreamPlay(songId) {
@@ -1039,6 +1189,7 @@
           // If this is the currently playing song, update the Now Playing panel too
           if (currentPlayingSongId === songId) {
             nowPlayingStreams.textContent = `${song.stream_count} streams`;
+            applySongToUI(song);
           }
 
         }
@@ -1047,64 +1198,128 @@
       }
     }
 
+    function formatTime(sec) {
+  if (!sec || isNaN(sec)) return "0:00";
+  const s = Math.floor(sec);
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${r.toString().padStart(2, "0")}`;
+}
+
+function applySongToUI(song) {
+  const title = song.title || "Untitled";
+  const artist = song.artist || "Unknown artist";
+  const cover = song.cover_url || "";
+  const streamsText = `${song.stream_count || 0} streams`;
+
+  // bottom bar
+  playerTitle.textContent = title;
+  playerArtist.textContent = artist;
+  playerCover.src = cover || "";
+
+  // mini Now Playing (if you have it)
+  if (nowPlaying) {
+    nowPlaying.style.display = "flex";
+    nowPlayingTitle.textContent = title;
+    nowPlayingArtist.textContent = artist;
+    nowPlayingStreams.textContent = streamsText;
+    if (nowPlayingCover) nowPlayingCover.src = cover || "";
+  }
+
+  // full-screen view
+  npfTitle.textContent = title;
+  npfArtist.textContent = artist;
+  npfStreams.textContent = streamsText;
+  npfCover.src = cover || "";
+}
+
+
+
 
         function initPlayer() {
-      // time-based streaming credit (after 10s)
-      audioPlayer.addEventListener("timeupdate", () => {
-        if (
-          currentPlayingSongId &&
-          !streamReportedForCurrentPlay &&
-          audioPlayer.currentTime >= 10
-        ) {
-          streamReportedForCurrentPlay = true;
-          registerStreamPlay(currentPlayingSongId);
-        }
-      });
+  // stream tracking + progress bar
+  audioPlayer.addEventListener("timeupdate", () => {
+    // 10s stream credit
+    if (
+      currentPlayingSongId &&
+      !streamReportedForCurrentPlay &&
+      audioPlayer.currentTime >= 10
+    ) {
+      streamReportedForCurrentPlay = true;
+      registerStreamPlay(currentPlayingSongId);
+    }
 
-      // Prev / Next / Play-Pause / Replay
-      playerPrev.addEventListener("click", () => {
-        if (currentSongIndex === null) return;
-        const prevIndex = currentSongIndex > 0 ? currentSongIndex - 1 : null;
-        if (prevIndex === null) return;
-        startPlayingSongByIndex(prevIndex);
-      });
+    // update time + slider
+    const dur = audioPlayer.duration || 0;
+    const cur = audioPlayer.currentTime || 0;
+    npfCurrentTime.textContent = formatTime(cur);
+    npfTotalTime.textContent = formatTime(dur);
+    if (dur > 0) {
+      npfSeek.value = (cur / dur) * 100;
+    } else {
+      npfSeek.value = 0;
+    }
+  });
 
-      playerNext.addEventListener("click", () => {
-        if (currentSongIndex === null) return;
-        const nextIndex =
-          currentSongIndex < songsData.length - 1 ? currentSongIndex + 1 : null;
-        if (nextIndex === null) return;
-        startPlayingSongByIndex(nextIndex);
-      });
+  // seek from slider
+  npfSeek.addEventListener("input", () => {
+    const dur = audioPlayer.duration || 0;
+    if (!dur) return;
+    const pct = Number(npfSeek.value || 0) / 100;
+    audioPlayer.currentTime = dur * pct;
+  });
 
-      playerReplay.addEventListener("click", () => {
-        if (!audioPlayer.src) return;
-        audioPlayer.currentTime = 0;
-        audioPlayer.play().catch((err) =>
-          console.error("Replay failed:", err)
-        );
-      });
+  // prev / next / replay-style controls
+  npfPrev.addEventListener("click", () => {
+    if (currentSongIndex == null) return;
+    const prevIndex = currentSongIndex > 0 ? currentSongIndex - 1 : null;
+    if (prevIndex == null) return;
+    startPlayingSongByIndex(prevIndex);
+  });
 
-      playerPlayPause.addEventListener("click", () => {
-        if (!audioPlayer.src) return;
-        if (audioPlayer.paused) {
-          audioPlayer.play().then(() => {
-            playerPlayPause.textContent = "⏸";
-          }).catch((err) => console.error("Play failed:", err));
-        } else {
-          audioPlayer.pause();
-          playerPlayPause.textContent = "▶";
-        }
-      });
+  npfNext.addEventListener("click", () => {
+    if (currentSongIndex == null) return;
+    const nextIndex =
+      currentSongIndex < songsData.length - 1 ? currentSongIndex + 1 : null;
+    if (nextIndex == null) return;
+    startPlayingSongByIndex(nextIndex);
+  });
 
-      // keep button icon in sync if user uses native controls
-      audioPlayer.addEventListener("play", () => {
+  npfPlayPause.addEventListener("click", () => {
+    if (!audioPlayer.src) return;
+    if (audioPlayer.paused) {
+      audioPlayer.play().then(() => {
+        npfPlayPause.textContent = "⏸";
         playerPlayPause.textContent = "⏸";
       });
-      audioPlayer.addEventListener("pause", () => {
-        playerPlayPause.textContent = "▶";
-      });
+    } else {
+      audioPlayer.pause();
+      npfPlayPause.textContent = "▶";
+      playerPlayPause.textContent = "▶";
     }
+  });
+
+  // keep full-screen + bar icons in sync with actual audio state
+  audioPlayer.addEventListener("play", () => {
+    npfPlayPause.textContent = "⏸";
+    playerPlayPause.textContent = "⏸";
+  });
+  audioPlayer.addEventListener("pause", () => {
+    npfPlayPause.textContent = "▶";
+    playerPlayPause.textContent = "▶";
+  });
+
+  // open full-screen when user taps the bottom bar (except exact audio element)
+  playerBar.addEventListener("click", (e) => {
+    if (e.target.tagName.toLowerCase() === "audio") return;
+    nowPlayingFull.style.display = "flex";
+  });
+
+  // close full-screen
+  npfClose.addEventListener("click", () => {
+    nowPlayingFull.style.display = "none";
+  });
+}
 
 
 

@@ -56,9 +56,6 @@
     </p>
   </div>
 
-  <!-- Supabase CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
-
   <!-- Your Supabase client -->
   <script type="module" src="/js/supabaseClient.js"></script>
 
@@ -75,7 +72,19 @@
       const show = (text) => { statusEl.textContent = text || ''; };
 
       async function refreshAuthUI() {
-        const { data, error } = await window.supabase.auth.getSession();
+        if (!window.supabase) {
+          show('Supabase not initialized yet. Refreshing…');
+          setTimeout(() => location.reload(), 500);
+        return;
+      }
+
+      const { data, error } = await window.supabase.auth.getSession();
+      if (error) {
+        console.error(error);
+        show('Auth error. Check console.');
+      return;
+      }
+
         if (error) {
           console.error(error);
           authedRow.style.display = 'none';

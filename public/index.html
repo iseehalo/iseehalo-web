@@ -57,58 +57,26 @@
   </div>
 
   <!-- Your Supabase client -->
-  <script type="module" src="/js/supabaseClient.js"></script>
-
   <script type="module">
-    document.addEventListener('DOMContentLoaded', () => {
-      const statusEl = document.getElementById('status');
-      const subscribeBtn = document.getElementById('subscribeMonthly');
-      const authedRow = document.getElementById('authedRow');
-      const anonRow = document.getElementById('anonRow');
-      const whoami = document.getElementById('whoami');
-      const signOut = document.getElementById('signOut');
-      const BASE_URL = window.location.origin;
+  import { supabase } from "/js/supabaseClient.js";
 
-      const show = (text) => { statusEl.textContent = text || ''; };
+  document.addEventListener('DOMContentLoaded', () => {
+    const statusEl = document.getElementById('status');
+    const subscribeBtn = document.getElementById('subscribeMonthly');
 
-      async function refreshAuthUI() {
-        if (!window.supabase) {
-          show('Supabase not initialized yet. Refreshing…');
-          setTimeout(() => location.reload(), 500);
-        return;
-      }
+    const show = (text) => { statusEl.textContent = text || ''; };
 
-      const { data, error } = await window.supabase.auth.getSession();
-      if (error) {
-        console.error(error);
-        show('Auth error. Check console.');
-      return;
-      }
-
+    subscribeBtn.addEventListener('click', async () => {
+      try {
+        show('Checking your session…');
+        const { data, error } = await supabase.auth.getSession();
         if (error) {
           console.error(error);
-          authedRow.style.display = 'none';
-          anonRow.style.display = 'flex';
-          whoami.textContent = '';
+          show('Session error. Check console.');
           return;
         }
-        const session = data?.session || null;
-        if (session) {
-          authedRow.style.display = 'flex';
-          anonRow.style.display = 'none';
-          whoami.textContent = `Signed in as ${session.user.email}`;
-        } else {
-          authedRow.style.display = 'none';
-          anonRow.style.display = 'flex';
-          whoami.textContent = '';
-        }
-      }
 
-      subscribeBtn.addEventListener('click', async () => {
-        show('Checking your session…');
-        const { data } = await window.supabase.auth.getSession();
         const session = data?.session || null;
-
         if (!session) {
           show('You need to sign in to subscribe.');
           setTimeout(() => window.location.href = '/auth.html', 1200);

@@ -125,6 +125,15 @@ async function updateUser(email, patch) {
   }
 }
 
+// ------ In case of sending bulk email----
+// Add this near your other Supabase helpers
+async function getWaitlistCount() {
+  const { count, error } = await supabase
+    .from('waitlist')
+    .select('*', { count: 'exact', head: true });
+  return count;
+}
+
 // --- Ensure Stripe customer by email ---
 async function ensureStripeCustomerForEmail(email) {
   const db = readDB();
@@ -421,6 +430,36 @@ app.post("/confirm-session", async (req, res) => {
   }
 });
 
+// --- Waitlist Route (Bypasses RLS) ---
+app.post("/api/join-waitlist", async (req, res) => {
+  const { email } = req.body;
+  
+  if (!email || !email.includes("@")) {
+    return res.status(400).json({ error: "Valid email required" });
+  }
+
+  try {
+    // 1. Insert into waitlist using the server-side client (Service Role)
+    const { error: upsertErr } = await supabase
+      .from("waitlist")
+      .upsert({ email }, { onConflict: "email" });
+
+    if (upsertErr) throw upsertErr;
+
+    // 2. Fetch the updated queue
+    const { data: queue, error: fetchErr } = await supabase
+      .from("waitlist")
+      .select("email, created_at")
+      .order("created_at", { ascending: true });
+
+    if (fetchErr) throw fetchErr;
+
+    res.json({ success: true, queue });
+  } catch (err) {
+    console.error("Waitlist Error:", err.message);
+    res.status(500).json({ error: "Server could not save your spot." });
+  }
+});
 // --- Start ---
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

@@ -95,51 +95,54 @@ const BASE_URL = window.location.hostname === "localhost" || window.location.hos
 
 subscribeBtn.addEventListener("click", async () => {
   try {
-    // 1. Initial UI state
+    console.log("Step 1: Button clicked");
     subscribeBtn.disabled = true;
-    subscribeBtn.textContent = "Processing...";
-    show("Checking your account...");
+    show("DEBUG: Checking session...");
 
-    // 2. Get the session (The Gatekeeper)
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    // This is the line most likely hanging
+    console.log("Step 2: Calling Supabase getSession...");
+    const { data, error } = await supabase.auth.getSession();
     
-    if (sessionError) throw sessionError;
-
-    if (!session) {
-      // If no user is found, send them to login
-      show("❌ You must be signed in to upgrade.");
-      setTimeout(() => {
-        window.location.href = "/auth.html"; // Redirect to your auth page
-      }, 1500);
+    if (error) {
+      console.error("Step 2 Error:", error);
+      alert("Supabase Error: " + error.message);
       return;
     }
 
-    // 3. User is logged in, now call your server.js
-    show("Redirecting to Secure Checkout...");
-    const response = await fetch(`${BASE_URL}/create-checkout-session`, {
+    const session = data?.session;
+    console.log("Step 3: Session received:", session);
+
+    if (!session) {
+      show("❌ Not signed in. Redirecting...");
+      console.log("Step 3b: No session, redirecting to auth.html");
+      setTimeout(() => window.location.href = "/auth.html", 1500);
+      return;
+    }
+
+    show("DEBUG: Contacting Server...");
+    console.log("Step 4: Fetching from:", `${BASE_URL}/create-checkout-session`);
+    
+    const res = await fetch(`${BASE_URL}/create-checkout-session`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ 
-        email: session.user.email 
-      }),
+      body: JSON.stringify({ email: session.user.email }),
     });
 
-    const result = await response.json();
+    console.log("Step 5: Server response status:", res.status);
+    const result = await res.json();
 
     if (result.url) {
-      // SUCCESS: Send them to Stripe
+      console.log("Step 6: Success! Redirecting to:", result.url);
       window.location.href = result.url;
     } else {
-      throw new Error(result.error || "Checkout failed to start.");
+      console.error("Step 6 Error: No URL in result", result);
+      show("Server Error: " + (result.error || "No URL"));
     }
 
   } catch (err) {
-    console.error("Subscription Error:", err);
-    show("Error: " + err.message);
-    
-    // Reset the button so they can try again
+    console.error("Crashed at catch block:", err);
+    alert("Crash: " + err.message);
     subscribeBtn.disabled = false;
-    subscribeBtn.textContent = "Subscribe — $11.99 / month";
   }
 });
 

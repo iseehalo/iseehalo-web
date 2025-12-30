@@ -92,43 +92,49 @@
 
 subscribeBtn.addEventListener("click", async () => {
   try {
-    // 1. UI Loading State
+    // 1. Initial UI state
     subscribeBtn.disabled = true;
-    subscribeBtn.textContent = "Loading...";
-    show("Checking your session...");
+    subscribeBtn.textContent = "Processing...";
+    show("Checking your account...");
 
-    const { data } = await supabase.auth.getSession();
-    const session = data?.session;
+    // 2. Get the session (The Gatekeeper)
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    
+    if (sessionError) throw sessionError;
 
     if (!session) {
-      show("Please sign in first!");
-      setTimeout(() => (window.location.href = "/auth.html"), 1500);
+      // If no user is found, send them to login
+      show("❌ You must be signed in to upgrade.");
+      setTimeout(() => {
+        window.location.href = "/auth.html"; // Redirect to your auth page
+      }, 1500);
       return;
     }
 
-    // 2. Call your server.js endpoint
+    // 3. User is logged in, now call your server.js
     show("Redirecting to Secure Checkout...");
-    const res = await fetch(`${BASE_URL}/create-checkout-session`, {
+    const response = await fetch(`${BASE_URL}/create-checkout-session`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ 
         email: session.user.email 
-        // Note: server.js will use STRIPE_PRICE_ID from .env automatically
       }),
     });
 
-    const result = await res.json();
+    const result = await response.json();
 
     if (result.url) {
-      // 3. Send the user to Stripe's hosted page
+      // SUCCESS: Send them to Stripe
       window.location.href = result.url;
     } else {
-      throw new Error(result.error || "No URL returned");
+      throw new Error(result.error || "Checkout failed to start.");
     }
 
   } catch (err) {
-    console.error(err);
+    console.error("Subscription Error:", err);
     show("Error: " + err.message);
+    
+    // Reset the button so they can try again
     subscribeBtn.disabled = false;
     subscribeBtn.textContent = "Subscribe — $11.99 / month";
   }

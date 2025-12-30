@@ -97,55 +97,53 @@ subscribeBtn.addEventListener("click", async () => {
   try {
     console.log("Step 1: Button clicked");
     subscribeBtn.disabled = true;
-    show("DEBUG: Checking session...");
+    show("Verifying session...");
 
-    // This is the line most likely hanging
-    console.log("Step 2: Calling Supabase getSession...");
-    const { data, error } = await supabase.auth.getSession();
-    
-    if (error) {
-      console.error("Step 2 Error:", error);
-      alert("Supabase Error: " + error.message);
+    // Create a timeout so it doesn't hang forever
+    const timeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error("Supabase timeout - check your connection")), 5000)
+    );
+
+    console.log("Step 2: Requesting User...");
+    // Race the Supabase call against our 5-second timeout
+    const { data: { user }, error } = await Promise.race([
+      supabase.auth.getUser(),
+      timeout
+    ]);
+
+    if (error) throw error;
+
+    if (!user) {
+      console.log("Step 3: No user found");
+      show("❌ Not signed in. Please log in first.");
+      setTimeout(() => window.location.href = "/auth.html", 2000);
       return;
     }
 
-    const session = data?.session;
-    console.log("Step 3: Session received:", session);
-
-    if (!session) {
-      show("❌ Not signed in. Redirecting...");
-      console.log("Step 3b: No session, redirecting to auth.html");
-      setTimeout(() => window.location.href = "/auth.html", 1500);
-      return;
-    }
-
-    show("DEBUG: Contacting Server...");
-    console.log("Step 4: Fetching from:", `${BASE_URL}/create-checkout-session`);
+    console.log("Step 4: User found:", user.email);
+    show("Connecting to Stripe...");
     
+    // Use the explicit Render/Localhost URL logic we discussed
     const res = await fetch(`${BASE_URL}/create-checkout-session`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: session.user.email }),
+      body: JSON.stringify({ email: user.email }),
     });
 
-    console.log("Step 5: Server response status:", res.status);
     const result = await res.json();
-
     if (result.url) {
-      console.log("Step 6: Success! Redirecting to:", result.url);
       window.location.href = result.url;
     } else {
-      console.error("Step 6 Error: No URL in result", result);
-      show("Server Error: " + (result.error || "No URL"));
+      show("Error: " + result.error);
     }
 
   } catch (err) {
-    console.error("Crashed at catch block:", err);
-    alert("Crash: " + err.message);
+    console.error("Debug Error:", err.message);
+    show("Connection error. Try refreshing.");
     subscribeBtn.disabled = false;
+    subscribeBtn.textContent = "Subscribe — $11.99 / month";
   }
 });
-
     signOut.addEventListener("click", async (e) => {
       e.preventDefault();
       await supabase.auth.signOut();

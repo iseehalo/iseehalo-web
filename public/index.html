@@ -1,358 +1,150 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>iseehalo — Join the Waitlist</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <style>
-      :root {
-        --halo: #fff59e;
-        --accent: #1db954;
-        --bg: #000;
-        --card: #0f0f0f;
-        --text: #ffffff;
-        --muted: #aaaaaa;
-      }
+<head>
+  <meta charset="utf-8" />
+  <title>iseehalo Premium — Upgrade</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: #000; color: #fff; margin: 0;
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    }
+    .wrap { width: 100%; max-width: 480px; background:#0f0f0f; border-radius:16px; padding:24px; box-shadow:0 8px 24px rgba(0,0,0,.35); }
+    .brand { font-size: 28px; font-weight:700; text-align:center; margin-bottom:6px; }
+    .brand .isee { color:#fff; } .brand .halo { color:#FFF59E; }
+    .sub { color:#aaa; text-align:center; margin:0 0 18px; font-size:14px; }
+    .row { display:flex; gap:10px; align-items:center; justify-content:center; margin: 12px 0; }
+    .btn {
+      width:100%; display:inline-block; text-align:center; padding:12px 14px; border-radius:12px; border:0; cursor:pointer;
+      background:linear-gradient(90deg,#FFD700,#ffcc33); color:#000; font-weight:600; margin-top:12px;
+    }
+    .link { color:#1DB954; text-decoration:none; font-weight:600; }
+    .muted { color:#9a9a9a; font-size:13px; text-align:center; }
+    .status { font-size:13px; color:#ddd; text-align:center; margin-top:8px; min-height: 18px; }
+    .tiny { font-size: 12px; color:#888; text-align:center; margin-top:6px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="brand"><span class="isee">isee</span><span class="halo">halo</span></div>
+    <p class="sub">Unlock ad-free listening, offline access, and exclusive music experiences.</p>
 
-      * {
-        box-sizing: border-box;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
-
-      body {
-        font-family: "Poppins", system-ui, -apple-system, "Segoe UI", Roboto,
-          Arial, sans-serif;
-        margin: 0;
-        min-height: 100vh;
-        background: radial-gradient(circle at top, #222 0, #000 45%);
-        color: var(--text);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 16px;
-      }
-
-      .container {
-        width: 100%;
-        max-width: 900px;
-        display: grid;
-        grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-        gap: 32px;
-        align-items: center;
-      }
-
-      @media (max-width: 780px) {
-        .container {
-          grid-template-columns: 1fr;
-          text-align: center;
-        }
-        .bullets {
-            display: inline-block;
-            text-align: left;
-        }
-      }
-
-      .hero {
-        padding: 24px 20px;
-      }
-
-      .brand {
-        font-size: 38px;
-        font-weight: 700;
-        letter-spacing: -1px;
-        margin-bottom: 12px;
-      }
-
-      .isee {
-        color: #fff;
-      }
-
-      .halo {
-        color: var(--halo);
-        text-shadow: 0 0 15px rgba(255, 245, 158, 0.3);
-      }
-
-      .tagline {
-        font-size: 20px;
-        line-height: 1.4;
-        color: var(--muted);
-        margin-bottom: 24px;
-      }
-
-      .highlight {
-        color: var(--text);
-        font-weight: 600;
-        border-bottom: 2px solid var(--accent);
-      }
-
-      .bullets {
-        list-style: none;
-        padding-left: 0;
-        margin: 0 0 24px;
-        color: var(--muted);
-        font-size: 15px;
-        line-height: 2;
-      }
-
-      .bullets li::before {
-        content: "✦ ";
-        color: var(--halo);
-        margin-right: 8px;
-      }
-
-      .small-note {
-        font-size: 13px;
-        color: #666;
-      }
-
-      .card {
-        background: var(--card);
-        border: 1px solid #222;
-        border-radius: 24px;
-        padding: 32px;
-        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
-      }
-
-      h2 {
-        margin-top: 0;
-        font-size: 22px;
-        margin-bottom: 8px;
-      }
-
-      label {
-        display: block;
-        font-size: 13px;
-        color: #c5c5c5;
-        margin: 16px 0 6px;
-      }
-
-      input {
-        width: 100%;
-        padding: 14px;
-        border-radius: 12px;
-        border: 1px solid #333;
-        background: #121212;
-        color: #fff;
-        outline: none;
-        font-size: 15px;
-        transition: border-color 0.2s;
-      }
-
-      input:focus {
-        border-color: var(--halo);
-      }
-
-      button {
-        width: 100%;
-        margin-top: 20px;
-        padding: 14px;
-        border-radius: 999px;
-        border: none;
-        cursor: pointer;
-        font-weight: 700;
-        font-size: 16px;
-        background: linear-gradient(90deg, #ffd700, #ffcc33);
-        color: #000;
-        transition: transform 0.2s, box-shadow 0.2s;
-      }
-
-      button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 20px rgba(255, 215, 0, 0.3);
-      }
-
-      button:active {
-        transform: translateY(0);
-      }
-
-      button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        transform: none;
-      }
-
-      .msg {
-        margin-top: 15px;
-        font-size: 14px;
-        min-height: 20px;
-        text-align: center;
-      }
-
-      .msg.success { color: #8ef18e; }
-      .msg.error { color: #ff7a7a; }
-
-      .position-box {
-        margin-top: 20px;
-        font-size: 14px;
-        padding: 16px;
-        border-radius: 12px;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        text-align: center;
-        line-height: 1.6;
-      }
-
-      .waitlist-list {
-        margin-top: 20px;
-        max-height: 200px;
-        overflow-y: auto;
-        font-size: 13px;
-        border-top: 1px solid #222;
-        padding-top: 12px;
-      }
-
-      /* Custom Scrollbar */
-      .waitlist-list::-webkit-scrollbar { width: 4px; }
-      .waitlist-list::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-
-      .waitlist-item {
-        display: flex;
-        justify-content: space-between;
-        padding: 6px 0;
-        color: var(--muted);
-      }
-
-      .idx { color: var(--halo); font-weight: 600; margin-right: 8px; }
-      .you { color: var(--accent); font-weight: 600; }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <div class="hero">
-        <div class="brand">
-          <span class="isee">isee</span><span class="halo">halo</span>
-        </div>
-        <p class="tagline">
-          The <span class="highlight">music marketplace</span> where fans and
-          artists share the upside.
-        </p>
-        <ul class="bullets">
-          <li>Own limited copies of tracks you love</li>
-          <li>Support artists directly and earn together</li>
-          <li>Early access to exclusive beta drops</li>
-        </ul>
-        <p class="small-note">
-          We’re letting people in as fast as we can. Join the queue to claim your spot.
-        </p>
-      </div>
-
-      <div class="card">
-        <h2>Reserve your spot</h2>
-        <p style="margin-top:0;font-size:13px;color:#888;">
-          Join <b>iseehalo</b> today. No spam, just updates.
-        </p>
-
-        <label for="email">Email address</label>
-        <input
-          id="email"
-          type="email"
-          placeholder="name@example.com"
-          autocomplete="email"
-        />
-
-        <button id="joinBtn">Join the Waitlist</button>
-
-        <div id="msg" class="msg"></div>
-        <div id="positionBox" class="position-box" style="display:none;"></div>
-        <div id="listBox" class="waitlist-list" style="display:none;"></div>
-      </div>
+    <!-- Sign-in / account actions -->
+    <div class="row" id="authedRow" style="display:none;">
+      <span id="whoami" class="tiny"></span>
+      <a class="link" id="signOut" href="#">Sign out</a>
+    </div>
+    <div class="row" id="anonRow" style="justify-content:space-between;">
+      <a class="link" href="/auth.html">Sign in</a>
+      <span class="tiny">or</span>
+      <a class="link" href="/auth.html">Create account</a>
     </div>
 
-    <script type="module" src="/js/supabaseClient.js"></script>
+    <!-- Subscribe button -->
+    <button class="btn" id="subscribeMonthly">Subscribe — $11.99 / month</button>
 
-    <script type="module">
-      const $ = (id) => document.getElementById(id);
-      const msg = $("msg");
-      const btn = $("joinBtn");
-      const emailEl = $("email");
-      const posBox = $("positionBox");
-      const listBox = $("listBox");
+    <p id="status" class="status"></p>
+    <p class="muted">Manage your plan in your
+      <a class="link" href="/dashboard">dashboard</a>.
+    </p>
 
-      function showMessage(text, kind = "") {
-        msg.textContent = text;
-        msg.className = "msg " + kind;
+    <!-- Optional: link to music web app -->
+    <p class="muted" style="margin-top: 6px;">
+      Already premium? <a class="link" href="/app.html">Launch web app</a>
+    </p>
+  </div>
+
+  <!-- Your Supabase client -->
+  <script type="module">
+  import { supabase } from "/js/supabaseClient.js";
+
+  // ✅ Set this if your backend is on Render or another domain.
+  // If your API is same-origin, you can use: const BASE_URL = window.location.origin;
+  const BASE_URL = window.location.origin;
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const statusEl = document.getElementById("status");
+    const subscribeBtn = document.getElementById("subscribeMonthly");
+    const signOut = document.getElementById("signOut");
+
+    const authedRow = document.getElementById("authedRow");
+    const anonRow = document.getElementById("anonRow");
+    const whoami = document.getElementById("whoami");
+
+    const show = (text) => (statusEl.textContent = text || "");
+
+    async function refreshAuthUI() {
+      const { data } = await supabase.auth.getSession();
+      const session = data?.session;
+
+      if (session) {
+        authedRow.style.display = "flex";
+        anonRow.style.display = "none";
+        whoami.textContent = session.user?.email ? `Signed in as ${session.user.email}` : "Signed in";
+      } else {
+        authedRow.style.display = "none";
+        anonRow.style.display = "flex";
+        whoami.textContent = "";
       }
+    }
 
-      const setBusy = (yes) => {
-        btn.disabled = yes;
-        btn.textContent = yes ? "Processing..." : "Join the Waitlist";
-      };
-
-      // Support "Enter" key
-      emailEl.addEventListener("keypress", (e) => {
-        if (e.key === "Enter") btn.click();
-      });
-
-      function renderQueue(queue, email) {
-        if (!queue || !queue.length) return;
-
-        const idx = queue.findIndex((row) => row.email === email);
-        const yourPos = idx === -1 ? null : idx + 1;
-
-        posBox.style.display = "block";
-        posBox.innerHTML = yourPos 
-            ? `You are <strong>#${yourPos}</strong> in line.<br><span style="font-size:12px; opacity:0.7">Total members: ${queue.length}</span>`
-            : `Total members in line: <strong>${queue.length}</strong>`;
-
-        listBox.style.display = "block";
-        listBox.innerHTML = "";
-
-        const maxShow = 10;
-        queue.slice(0, maxShow).forEach((row, i) => {
-          const div = document.createElement("div");
-          div.className = "waitlist-item";
-          const isYou = row.email === email;
-
-          const parts = row.email.split("@");
-          const masked = parts[0].substring(0, 1) + "****@" + parts[1];
-
-          div.innerHTML = `
-            <span>
-              <span class="idx">#${i + 1}</span>
-              ${isYou ? `<span class="you">${masked} (you)</span>` : masked}
-            </span>
-            <span>${new Date(row.created_at).toLocaleDateString()}</span>
-          `;
-          listBox.appendChild(div);
-        });
-      }
-
-      btn.addEventListener("click", async () => {
-  const email = emailEl.value.trim().toLowerCase();
-
-  if (!email || !email.includes("@")) {
-    return showMessage("Please enter a valid email.", "error");
-  }
-
-  setBusy(true);
-  showMessage("Saving your spot...");
-
+subscribeBtn.addEventListener("click", async () => {
   try {
-    // Talk to YOUR server, not Supabase directly
-    const response = await fetch("/api/join-waitlist", {
+    // 1. UI Loading State
+    subscribeBtn.disabled = true;
+    subscribeBtn.textContent = "Loading...";
+    show("Checking your session...");
+
+    const { data } = await supabase.auth.getSession();
+    const session = data?.session;
+
+    if (!session) {
+      show("Please sign in first!");
+      setTimeout(() => (window.location.href = "/auth.html"), 1500);
+      return;
+    }
+
+    // 2. Call your server.js endpoint
+    show("Redirecting to Secure Checkout...");
+    const res = await fetch(`${BASE_URL}/create-checkout-session`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email })
+      body: JSON.stringify({ 
+        email: session.user.email 
+        // Note: server.js will use STRIPE_PRICE_ID from .env automatically
+      }),
     });
 
-    const result = await response.json();
+    const result = await res.json();
 
-    if (!response.ok) throw new Error(result.error || "Failed to join");
+    if (result.url) {
+      // 3. Send the user to Stripe's hosted page
+      window.location.href = result.url;
+    } else {
+      throw new Error(result.error || "No URL returned");
+    }
 
-    showMessage("Success! You're on the list. 🎉", "success");
-    renderQueue(result.queue, email);
-    emailEl.value = ""; 
   } catch (err) {
-    showMessage(err.message, "error");
-  } finally {
-    setBusy(false);
+    console.error(err);
+    show("Error: " + err.message);
+    subscribeBtn.disabled = false;
+    subscribeBtn.textContent = "Subscribe — $11.99 / month";
   }
 });
-    </script>
-  </body>
+
+    signOut.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await supabase.auth.signOut();
+      await refreshAuthUI();
+      show("Signed out.");
+    });
+
+    refreshAuthUI();
+    supabase.auth.onAuthStateChange(() => refreshAuthUI());
+  });
+</script>
+
+</body>
 </html>

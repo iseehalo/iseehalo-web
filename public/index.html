@@ -62,7 +62,10 @@
 
   // ✅ Set this if your backend is on Render or another domain.
   // If your API is same-origin, you can use: const BASE_URL = window.location.origin;
-  const BASE_URL = window.location.origin;
+ // This checks if you are on localhost; if not, it uses the production URL
+const BASE_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+  ? "http://localhost:3000"
+  : "https://iseehalo-web.onrender.com"; // Replace with your actual Render URL
 
   document.addEventListener("DOMContentLoaded", () => {
     const statusEl = document.getElementById("status");

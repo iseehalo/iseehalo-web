@@ -79,6 +79,20 @@ app.use((req, res, next) => {
   return express.json()(req, res, next);
 });
 
+
+app.get("/dashboard", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "dashboard.html"));
+});
+
+app.get("/app", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "app.html"));
+});
+
+app.get("/success", (req, res) => {
+  res.sendFile(path.join(PUBLIC_DIR, "success.html"));
+});
+
+
 app.use(express.static(PUBLIC_DIR));
 
 // --- Routes ---

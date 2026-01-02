@@ -92,6 +92,29 @@ app.get("/success", (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, "success.html"));
 });
 
+// --- Add this to server.js ---
+app.get("/status", async (req, res) => {
+  try {
+    const { email } = req.query;
+    if (!email) return res.status(400).json({ error: "Email required" });
+
+    // Look up the user in Supabase
+    const { data, error } = await supabase
+      .from("users")
+      .select("is_premium, current_period_end")
+      .eq("email", email)
+      .maybeSingle();
+
+    if (error) throw error;
+
+    // If user doesn't exist yet, return a default object
+    res.json({ user: data || { is_premium: false } });
+  } catch (err) {
+    console.error("Status check error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 
 app.use(express.static(PUBLIC_DIR));
 

@@ -90,10 +90,11 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 
 <!-- Initialize global client -->
-  <script type="module" src="/js/supabaseClient.js"></script>
-
   <script type="module">
-    const BASE_URL = window.location.origin;
+    // 1. SMART URL: Detects if you're on Render or Localhost
+    const BACKEND_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      ? "http://localhost:3000"
+      : "https://iseehalo-web.onrender.com"; // 👈 Ensure this is your actual Render Backend URL
 
     const userBlock = document.getElementById("userBlock");
     const resultBox = document.getElementById("result");
@@ -106,16 +107,22 @@
     function showStatus(text, ok) {
       resultBox.style.display = "block";
       resultBox.textContent = text;
-      resultBox.className = "status-box " + (ok ? "premium" : "not-premium");
+      // 'ok' can be true, false, or null (for loading/errors)
+      if (ok === true) resultBox.className = "status-box premium";
+      else if (ok === false) resultBox.className = "status-box not-premium";
+      else resultBox.className = "status-box";
     }
 
     async function ensureAuthed() {
+      // Use the global window.supabase initialized by your client script
       const { data, error } = await window.supabase.auth.getUser();
       const user = data?.user;
+      
       if (error || !user) {
         window.location.href = "/auth.html";
         return null;
       }
+      
       currentEmail = user.email || null;
       userBlock.innerHTML = `Signed in as <strong>${currentEmail}</strong>`;
       return user;
@@ -123,65 +130,62 @@
 
     async function loadStatus() {
       if (!currentEmail) return;
-      resultBox.style.display = "block";
-      resultBox.textContent = "Checking status…";
-      resultBox.className = "status-box";
+      showStatus("Checking status…", null);
 
       try {
-        const res = await fetch(`${BASE_URL}/status?email=${encodeURIComponent(currentEmail)}`);
+        // Use BACKEND_URL instead of window.location.origin
+        const res = await fetch(`${BACKEND_URL}/status?email=${encodeURIComponent(currentEmail)}`);
+        
+        if (!res.ok) throw new Error("Backend unreachable");
+        
         const data = await res.json();
 
         if (!data.user || !data.user.is_premium) {
-          showStatus("⚠️ Not premium yet.", false);
+          showStatus("⚠️ Standard Account — Upgrade to get Premium.", false);
         } else {
-          const exp = new Date(data.user.current_period_end).toLocaleDateString();
-          showStatus(`🌟 Premium active — renews on ${exp}`, true);
+          // Format the date if it exists
+          const dateStr = data.user.current_period_end 
+            ? new Date(data.user.current_period_end).toLocaleDateString()
+            : "Active";
+          showStatus(`🌟 Premium active — renews on ${dateStr}`, true);
         }
       } catch (err) {
-        console.error(err);
-        showStatus("Error checking status.", false);
+        console.error("Dashboard Fetch Error:", err);
+        showStatus("Error checking status. Please try again.", false);
       }
     }
 
+    // Portals use POST, so use BACKEND_URL here too
     async function openBilling() {
       if (!currentEmail) return alert("Please sign in again.");
       try {
-        const res = await fetch(`${BASE_URL}/create-portal-session`, {
+        const res = await fetch(`${BACKEND_URL}/create-portal-session`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: currentEmail }),
         });
         const data = await res.json();
-        if (data.url) {
-          window.location.href = data.url;
-        } else {
-          alert(data.error || "Unable to open billing portal.");
-        }
+        if (data.url) window.location.href = data.url;
+        else alert(data.error || "Unable to open billing portal.");
       } catch (err) {
-        console.error(err);
         alert("Error opening billing portal.");
       }
     }
 
     async function signOut() {
-      try {
-        await window.supabase.auth.signOut();
-      } catch (e) {
-        console.error(e);
-      } finally {
-        window.location.href = "/auth.html";
-      }
+      await window.supabase.auth.signOut();
+      window.location.href = "/auth.html";
     }
 
-    // Wire up
-    btnRefresh.addEventListener("click", loadStatus);
-    btnBilling.addEventListener("click", openBilling);
-    btnSignOut.addEventListener("click", signOut);
-
-    // Boot
+    // Initialize
     const user = await ensureAuthed();
-    if (user) loadStatus();
-  </script>
+    if (user) {
+        loadStatus();
+        btnRefresh.onclick = loadStatus;
+        btnBilling.onclick = openBilling;
+        btnSignOut.onclick = signOut;
+    }
+</script>
 </body>
 </html>
 

@@ -11,7 +11,7 @@
       background: #000; color: #fff; margin: 0;
       min-height: 100vh; display: flex; align-items: center; justify-content: center;
     }
-    .wrap { width: 100%; max-width: 480px; background:#0f0f0f; border-radius:16px; padding:24px; box-shadow:0 8px 24px rgba(0,0,0,.35); }
+    .wrap { width: 100%; max-width: 480px; background:#0f0f0f; border-radius:16px; padding:24px; box-shadow:0 8px 24px rgba(0,0,0,.35); border: 1px solid #333; }
     .brand { font-size: 28px; font-weight:700; text-align:center; margin-bottom:6px; }
     .brand .isee { color:#fff; } .brand .halo { color:#FFF59E; }
     .sub { color:#aaa; text-align:center; margin:0 0 18px; font-size:14px; }
@@ -20,9 +20,10 @@
       width:100%; display:inline-block; text-align:center; padding:12px 14px; border-radius:12px; border:0; cursor:pointer;
       background:linear-gradient(90deg,#FFD700,#ffcc33); color:#000; font-weight:600; margin-top:12px;
     }
+    .btn:disabled { background: #555; cursor: not-allowed; color: #888; }
     .link { color:#1DB954; text-decoration:none; font-weight:600; }
     .muted { color:#9a9a9a; font-size:13px; text-align:center; }
-    .status { font-size:13px; color:#ddd; text-align:center; margin-top:8px; min-height: 18px; }
+    .status { font-size:13px; color:#FFF59E; text-align:center; margin-top:8px; min-height: 18px; font-weight: 500; }
     .tiny { font-size: 12px; color:#888; text-align:center; margin-top:6px; }
   </style>
 </head>
@@ -31,7 +32,6 @@
     <div class="brand"><span class="isee">isee</span><span class="halo">halo</span></div>
     <p class="sub">Unlock ad-free listening, offline access, and exclusive music experiences.</p>
 
-    <!-- Sign-in / account actions -->
     <div class="row" id="authedRow" style="display:none;">
       <span id="whoami" class="tiny"></span>
       <a class="link" id="signOut" href="#">Sign out</a>
@@ -42,118 +42,101 @@
       <a class="link" href="/auth.html">Create account</a>
     </div>
 
-    <!-- Subscribe button -->
     <button class="btn" id="subscribeMonthly">Subscribe — $11.99 / month</button>
 
     <p id="status" class="status"></p>
-    <p class="muted">Manage your plan in your
-      <a class="link" href="/dashboard">dashboard</a>.
-    </p>
-
-    <!-- Optional: link to music web app -->
+    
+    <p class="muted">Manage your plan in your <a class="link" href="/dashboard">dashboard</a>.</p>
     <p class="muted" style="margin-top: 6px;">
       Already premium? <a class="link" href="/app.html">Launch web app</a>
     </p>
   </div>
 
-  <!-- Your Supabase client -->
   <script type="module">
-  import { supabase } from "/js/supabaseClient.js";
+    import { supabase } from "/js/supabaseClient.js";
 
-  // ✅ Set this if your backend is on Render or another domain.
-  // If your API is same-origin, you can use: const BASE_URL = window.location.origin;
- // This checks if you are on localhost; if not, it uses the production URL
-const BASE_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-  ? "http://localhost:3000"
-  : "https://iseehalo-web.onrender.com"; // Replace with your actual Render URL
+    // ✅ CONFIG: Ensure this matches your Render BACKEND URL
+    const BASE_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+      ? "http://localhost:3000"
+      : "https://iseehalo-web.onrender.com"; // Double check if this is -web or -backend!
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const statusEl = document.getElementById("status");
-    const subscribeBtn = document.getElementById("subscribeMonthly");
-    const signOut = document.getElementById("signOut");
+    document.addEventListener("DOMContentLoaded", () => {
+      const statusEl = document.getElementById("status");
+      const subscribeBtn = document.getElementById("subscribeMonthly");
+      const signOut = document.getElementById("signOut");
+      const authedRow = document.getElementById("authedRow");
+      const anonRow = document.getElementById("anonRow");
+      const whoami = document.getElementById("whoami");
 
-    const authedRow = document.getElementById("authedRow");
-    const anonRow = document.getElementById("anonRow");
-    const whoami = document.getElementById("whoami");
+      const show = (text) => (statusEl.textContent = text || "");
 
-    const show = (text) => (statusEl.textContent = text || "");
+      async function refreshAuthUI() {
+        const { data } = await supabase.auth.getSession();
+        const session = data?.session;
 
-    async function refreshAuthUI() {
-      const { data } = await supabase.auth.getSession();
-      const session = data?.session;
-
-      if (session) {
-        authedRow.style.display = "flex";
-        anonRow.style.display = "none";
-        whoami.textContent = session.user?.email ? `Signed in as ${session.user.email}` : "Signed in";
-      } else {
-        authedRow.style.display = "none";
-        anonRow.style.display = "flex";
-        whoami.textContent = "";
+        if (session) {
+          authedRow.style.display = "flex";
+          anonRow.style.display = "none";
+          whoami.textContent = `Signed in as ${session.user?.email}`;
+        } else {
+          authedRow.style.display = "none";
+          anonRow.style.display = "flex";
+          whoami.textContent = "";
+        }
       }
-    }
-subscribeBtn.addEventListener("click", async () => {
-  try {
-    console.log("Step 1: Button clicked");
-    subscribeBtn.disabled = true;
-    show("Verifying session...");
 
-    // Create a timeout so it doesn't hang forever
-    const timeout = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error("Supabase timeout - check your connection")), 5000)
-    );
+      subscribeBtn.addEventListener("click", async () => {
+        try {
+          subscribeBtn.disabled = true;
+          show("Verifying session...");
 
-    console.log("Step 2: Requesting User...");
-    // Race the Supabase call against our 5-second timeout
-    const { data: { user }, error } = await Promise.race([
-      supabase.auth.getUser(),
-      timeout
-    ]);
+          // 1. Check User
+          const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-    if (error) throw error;
+          if (authError || !user) {
+            show("❌ Please sign in first.");
+            setTimeout(() => window.location.href = "/auth.html", 2000);
+            return;
+          }
 
-    if (!user) {
-      console.log("Step 3: No user found");
-      show("❌ Not signed in. Please log in first.");
-      setTimeout(() => window.location.href = "/auth.html", 2000);
-      return;
-    }
+          show("Connecting to Stripe...");
+          
+          // 2. Call Backend
+          const res = await fetch(`${BASE_URL}/create-checkout-session`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: user.email }),
+          });
 
-    console.log("Step 4: User found:", user.email);
-    show("Connecting to Stripe...");
-    
-    // Use the explicit Render/Localhost URL logic we discussed
-    const res = await fetch(`${BASE_URL}/create-checkout-session`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: user.email }),
+          if (!res.ok) {
+            const errorData = await res.json();
+            throw new Error(errorData.error || "Server error");
+          }
+
+          const result = await res.json();
+
+          if (result.url) {
+            show("Redirecting to Stripe...");
+            window.location.href = result.url;
+          } else {
+            show("Error: No checkout URL received.");
+          }
+
+        } catch (err) {
+          console.error("Payment Error:", err.message);
+          show("⚠️ " + err.message);
+          subscribeBtn.disabled = false;
+        }
+      });
+
+      signOut.addEventListener("click", async (e) => {
+        e.preventDefault();
+        await supabase.auth.signOut();
+        window.location.reload();
+      });
+
+      refreshAuthUI();
     });
-
-    const result = await res.json();
-    if (result.url) {
-      window.location.href = result.url;
-    } else {
-      show("Error: " + result.error);
-    }
-
-  } catch (err) {
-    console.error("Debug Error:", err.message);
-    show("Connection error. Try refreshing.");
-    subscribeBtn.disabled = false;
-    subscribeBtn.textContent = "Subscribe — $11.99 / month";
-  }
-});
-    signOut.addEventListener("click", async (e) => {
-      e.preventDefault();
-      await supabase.auth.signOut();
-      await refreshAuthUI();
-      show("Signed out.");
-    });
-
-    refreshAuthUI();
-    supabase.auth.onAuthStateChange(() => refreshAuthUI());
-  });
-</script>
-
+  </script>
 </body>
 </html>

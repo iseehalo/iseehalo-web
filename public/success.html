@@ -55,51 +55,74 @@
 
   <footer>© 2025 Iseehalo. All rights reserved.</footer>
 
-  <script>
-    const params = new URLSearchParams(location.search);
-    const session_id = params.get("session_id");
-    const email = params.get("email");
-    const BASE_URL = window.location.origin;
+ <script type="module">
+  // 1. Get params from URL
+  const params = new URLSearchParams(location.search);
+  const session_id = params.get("session_id");
+  const email = params.get("email");
 
-    // Save the email so dashboard can prefill it.
-    if (email) try { localStorage.setItem("iseehaloEmail", email); } catch {}
+  // 2. SMART URL: Points to your Render Backend
+  const BACKEND_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://localhost:3000"
+    : "https://iseehalo-web.onrender.com"; // 👈 Ensure this matches your Render Service URL
 
-    async function confirmOnce() {
-      if (!session_id || !email) return { ok: false, reason: "missing params" };
-      const res = await fetch(`${BASE_URL}/confirm-session`, {
+  // Save email for the dashboard
+  if (email) {
+    try { localStorage.setItem("iseehaloEmail", email); } catch(e) {}
+  }
+
+  async function confirmOnce() {
+    if (!session_id || !email) {
+      console.error("Missing session_id or email");
+      return { ok: false };
+    }
+    
+    try {
+      const res = await fetch(`${BACKEND_URL}/confirm-session`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session_id, email }),
       });
-      const data = await res.json().catch(() => ({}));
-      return { ok: res.ok && !!data.ok, data };
+      const data = await res.json();
+      return { ok: res.ok, data };
+    } catch (err) {
+      console.error("Fetch error:", err);
+      return { ok: false };
     }
+  }
 
-    async function pollConfirm(maxTries = 6, delayMs = 4000) {
-      const statusEl = document.getElementById("status");
-      for (let i = 1; i <= maxTries; i++) {
-        try {
-          const { ok, data } = await confirmOnce();
-          if (ok && data?.premium) {
-            statusEl.textContent = "✨ Premium is active! Enjoy ad-free listening.";
-            return true;
-          }
-          statusEl.textContent = `⏳ Verifying… (attempt ${i}/${maxTries})`;
-        } catch (e) {
-          statusEl.textContent = "Temporary issue verifying. Retrying…";
-        }
-        await new Promise(r => setTimeout(r, delayMs));
+  async function pollConfirm(maxTries = 6, delayMs = 4000) {
+    const statusEl = document.getElementById("status");
+    
+    for (let i = 1; i <= maxTries; i++) {
+      statusEl.textContent = `⏳ Verifying your payment… (attempt ${i}/${maxTries})`;
+      
+      const { ok, data } = await confirmOnce();
+      
+      if (ok && data?.premium) {
+        statusEl.textContent = "✨ Premium is active! Enjoy ad-free listening.";
+        statusEl.style.color = "#1DB954"; // Change to green on success
+        return true;
       }
-      statusEl.textContent = "Still verifying… You can refresh this page in a few seconds.";
-      return false;
+      
+      // Wait before next attempt
+      await new Promise(r => setTimeout(r, delayMs));
     }
+    
+    statusEl.textContent = "Payment received! It's taking a moment to sync. Please check your dashboard in 1 minute.";
+    return false;
+  }
 
-    document.getElementById("dashboardBtn").addEventListener("click", () => {
-      window.location.href = `${BASE_URL}/dashboard`;
-    });
+  document.getElementById("dashboardBtn").addEventListener("click", () => {
+    window.location.href = "/dashboard";
+  });
 
-    // Kick off polling immediately
+  // Start checking immediately
+  if (session_id) {
     pollConfirm();
-  </script>
+  } else {
+    document.getElementById("status").textContent = "No active session found.";
+  }
+</script>
 </body>
 </html>

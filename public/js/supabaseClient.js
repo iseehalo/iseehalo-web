@@ -15,7 +15,7 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // (optional) also expose globally for quick debugging
 window.supabase = supabase;
 
-console.log("✅ Supabase client initialized");
+console.log("Supabase client initialized");
 
 
 

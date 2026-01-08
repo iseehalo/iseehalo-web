@@ -55,40 +55,46 @@ app.use(express.static(PUBLIC_DIR));
 
 app.post("/create-checkout-session", async (req, res) => {
   try {
-    // Note: Ensure your index.html passes 'mobileUserId' in the fetch body
     const { email, mobileUserId } = req.body;
     const priceId = process.env.STRIPE_PRICE_ID;
 
-    if (!priceId) throw new Error("STRIPE_PRICE_ID is not defined in env");
-
-    let customerId = null;
-    if (email) {
+    // 1. Properly handle customer lookup
+    let customerId = undefined; // Use undefined instead of null
+    if (email && email.trim() !== "") {
       const customers = await stripe.customers.list({ email, limit: 1 });
       customerId = customers.data.length 
         ? customers.data[0].id 
         : (await stripe.customers.create({ email })).id;
     }
 
-    const session = await stripe.checkout.sessions.create({
+    // 2. Build the session object dynamically
+    const sessionOptions = {
       mode: "subscription",
-      customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
-      client_reference_id: mobileUserId || null, // CRITICAL: This links the payment to the App User ID
-      metadata: { 
-        user_email: email || "mobile_checkout",
-        source_platform: "mobile_app" 
-      },
       success_url: `${process.env.BASE_URL}/success.html?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.BASE_URL}/index.html`,
-    });
+      metadata: { 
+        user_email: email || "mobile_checkout" 
+      },
+    };
 
+    // ONLY add these if they have real content
+    if (customerId) {
+        sessionOptions.customer = customerId;
+    }
+
+    if (mobileUserId && mobileUserId.trim() !== "") {
+        sessionOptions.client_reference_id = mobileUserId;
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionOptions);
     res.json({ url: session.url });
+
   } catch (e) {
     console.error("Checkout Error:", e.message);
     res.status(500).json({ error: e.message });
   }
 });
-
 app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;

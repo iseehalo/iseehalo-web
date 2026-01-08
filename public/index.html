@@ -53,90 +53,109 @@
   </div>
 
   <script type="module">
-    import { supabase } from "/js/supabaseClient.js";
+  import { supabase } from "/js/supabaseClient.js";
 
-    // ✅ CONFIG: Ensure this matches your Render BACKEND URL
-    const BASE_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-      ? "http://localhost:3000"
-      : "https://iseehalo-web.onrender.com"; // Double check if this is -web or -backend!
+  const BASE_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+    ? "http://localhost:3000"
+    : "https://iseehalo-web.onrender.com";
 
-    document.addEventListener("DOMContentLoaded", () => {
-      const statusEl = document.getElementById("status");
-      const subscribeBtn = document.getElementById("subscribeMonthly");
-      const signOut = document.getElementById("signOut");
-      const authedRow = document.getElementById("authedRow");
-      const anonRow = document.getElementById("anonRow");
-      const whoami = document.getElementById("whoami");
+  document.addEventListener("DOMContentLoaded", () => {
+    const statusEl = document.getElementById("status");
+    const subscribeBtn = document.getElementById("subscribeMonthly");
+    const signOut = document.getElementById("signOut");
+    const authedRow = document.getElementById("authedRow");
+    const anonRow = document.getElementById("anonRow");
+    const whoami = document.getElementById("whoami");
 
-      const show = (text) => (statusEl.textContent = text || "");
+    const show = (text) => (statusEl.textContent = text || "");
 
-      async function refreshAuthUI() {
-        const { data } = await supabase.auth.getSession();
-        const session = data?.session;
+    // --- 1. NEW: CATCH USER ID FROM APP ---
+    // This looks for ?user_id= in the URL (sent by the iPhone)
+    const urlParams = new URLSearchParams(window.location.search);
+    const mobileUserId = urlParams.get('user_id');
 
-        if (session) {
-          authedRow.style.display = "flex";
-          anonRow.style.display = "none";
-          whoami.textContent = `Signed in as ${session.user?.email}`;
-        } else {
-          authedRow.style.display = "none";
-          anonRow.style.display = "flex";
-          whoami.textContent = "";
-        }
+    if (mobileUserId) {
+      console.log("📱 Mobile ID detected:", mobileUserId);
+      // We save it so we don't lose it if the page refreshes
+      sessionStorage.setItem('iseehalo_mobile_id', mobileUserId);
+      show("Account recognized. Ready to upgrade!");
+    }
+
+    async function refreshAuthUI() {
+      const { data } = await supabase.auth.getSession();
+      const session = data?.session;
+
+      if (session) {
+        authedRow.style.display = "flex";
+        anonRow.style.display = "none";
+        whoami.textContent = `Signed in as ${session.user?.email}`;
+      } else {
+        authedRow.style.display = "none";
+        anonRow.style.display = "flex";
+        whoami.textContent = "";
       }
+    }
 
-      subscribeBtn.addEventListener("click", async () => {
-        try {
-          subscribeBtn.disabled = true;
-          show("Verifying session...");
+    subscribeBtn.addEventListener("click", async () => {
+      try {
+        subscribeBtn.disabled = true;
+        show("Verifying session...");
 
-          // 1. Check User
-          const { data: { user }, error: authError } = await supabase.auth.getUser();
+        // Get the stored mobile ID if it exists
+        const savedMobileId = sessionStorage.getItem('iseehalo_mobile_id');
 
-          if (authError || !user) {
-            show("❌ Please sign in first.");
-            setTimeout(() => window.location.href = "/auth.html", 2000);
-            return;
-          }
+        // Check Web User
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
 
-          show("Connecting to Stripe...");
-          
-          // 2. Call Backend
-          const res = await fetch(`${BASE_URL}/create-checkout-session`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email: user.email }),
-          });
-
-          if (!res.ok) {
-            const errorData = await res.json();
-            throw new Error(errorData.error || "Server error");
-          }
-
-          const result = await res.json();
-
-          if (result.url) {
-            show("Redirecting to Stripe...");
-            window.location.href = result.url;
-          } else {
-            show("Error: No checkout URL received.");
-          }
-
-        } catch (err) {
-          console.error("Payment Error:", err.message);
-          show("⚠️ " + err.message);
-          subscribeBtn.disabled = false;
+        // If no web user AND no mobile ID, they must sign in
+        if (!user && !savedMobileId) {
+          show("❌ Please sign in first.");
+          setTimeout(() => window.location.href = "/auth.html", 2000);
+          return;
         }
-      });
 
-      signOut.addEventListener("click", async (e) => {
-        e.preventDefault();
-        await supabase.auth.signOut();
-        window.location.reload();
-      });
+        show("Connecting to Stripe...");
+        
+        // --- 2. UPDATED BACKEND CALL ---
+        const res = await fetch(`${BASE_URL}/create-checkout-session`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            email: user ? user.email : null,
+            mobileUserId: savedMobileId // Pass the mobile ID to the server
+          }),
+        });
 
-      refreshAuthUI();
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.error || "Server error");
+        }
+
+        const result = await res.json();
+
+        if (result.url) {
+          show("Redirecting to Stripe...");
+          window.location.href = result.url;
+        } else {
+          show("Error: No checkout URL received.");
+        }
+
+      } catch (err) {
+        console.error("Payment Error:", err.message);
+        show("⚠️ " + err.message);
+        subscribeBtn.disabled = false;
+      }
     });
-  </script>
+
+    signOut.addEventListener("click", async (e) => {
+      e.preventDefault();
+      await supabase.auth.signOut();
+      sessionStorage.removeItem('iseehalo_mobile_id'); // Clear on sign out
+      window.location.reload();
+    });
+
+    refreshAuthUI();
+  });
+</script>
 </body>
 </html>

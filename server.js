@@ -3,7 +3,7 @@
 
 import express from "express";
 import dotenv from "dotenv";
-dotenv.config(); // ✅ Load env first
+dotenv.config();
 
 import Stripe from "stripe";
 import cors from "cors";
@@ -11,192 +11,123 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { createClient } from "@supabase/supabase-js";
+import jwt from "jsonwebtoken";
 
-// --- Safety Check ---
-const requiredEnv = [
-  "STRIPE_SECRET_KEY",
-  "STRIPE_WEBHOOK_SECRET",
-  "BASE_URL",
-  "SUPABASE_URL",
-  "SUPABASE_SERVICE_ROLE_KEY",
-  "STRIPE_PRICE_ID"
-];
-for (const k of requiredEnv) {
-  if (!process.env[k]) console.warn(`⚠️ Missing env variable: ${k}`);
-}
-
-// --- Initialization ---
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 const app = express();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PUBLIC_DIR = path.join(__dirname, "public");
-const DB_PATH = path.join(__dirname, "db.json");
 
-// --- Middleware ---
 app.set("trust proxy", 1);
-app.use(cors()); // ✅ 1. Moved to top for Render/Cross-domain support
+app.use(cors());
 
-// --- Helper: Local DB (Fallback only) ---
-function readDB() {
-  try {
-    if (!fs.existsSync(DB_PATH)) return { users: {} };
-    const txt = fs.readFileSync(DB_PATH, "utf8");
-    return txt ? JSON.parse(txt) : { users: {} };
-  } catch (e) { return { users: {} }; }
-}
-function writeDB(data) {
-  try { fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2)); } catch (e) {}
-}
-
-// --- Update Logic (Supabase Primary) ---
+// --- Helper Functions ---
 async function updateUser(email, patch) {
-  // 1. Update File DB (Local debug)
-  const db = readDB();
-  db.users[email] = { ...(db.users[email] || { email }), ...patch };
-  writeDB(db);
-
-  // 2. Update Supabase (Production)
   try {
     const { data: row } = await supabase.from("users").select("id").eq("email", email).maybeSingle();
     if (row) {
-      const { error } = await supabase.from("users").update(patch).eq("id", row.id);
-      if (!error) console.log(`☁️ Supabase updated: ${email}`);
-    } else {
-      console.log(`ℹ️ No Supabase user found for email: ${email}`);
+      await supabase.from("users").update(patch).eq("id", row.id);
+      console.log(`☁️ Supabase updated via email: ${email}`);
     }
-  } catch (err) { console.error("Supabase sync error:", err.message); }
+  } catch (err) { console.error("Update error:", err.message); }
 }
 
-// --- Body Parsers ---
+function decodeAppleJWS(signedPayload) {
+  try { return jwt.decode(signedPayload); } catch (e) { return null; }
+}
+
+async function updateAppleUser(appAccountToken, payload) {
+  if (!appAccountToken) return;
+  const patch = {
+    is_premium: payload.status === 1,
+    platform: 'apple',
+    current_period_end: new Date(payload.expiresDate).toISOString(),
+    apple_original_transaction_id: payload.originalTransactionId
+  };
+  await supabase.from("users").update(patch).eq("id", appAccountToken);
+}
+
+// --- Body Parser Logic ---
 app.use((req, res, next) => {
   if (req.originalUrl === "/webhook") return next();
   return express.json()(req, res, next);
 });
 
-
-app.get("/dashboard", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "dashboard.html"));
-});
-
-app.get("/app", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "app.html"));
-});
-
-app.get("/success", (req, res) => {
-  res.sendFile(path.join(PUBLIC_DIR, "success.html"));
-});
-
-// --- Add this to server.js ---
-app.get("/status", async (req, res) => {
-  try {
-    const { email } = req.query;
-    if (!email) return res.status(400).json({ error: "Email required" });
-
-    // Look up the user in Supabase
-    const { data, error } = await supabase
-      .from("users")
-      .select("is_premium, current_period_end")
-      .eq("email", email)
-      .maybeSingle();
-
-    if (error) throw error;
-
-    // If user doesn't exist yet, return a default object
-    res.json({ user: data || { is_premium: false } });
-  } catch (err) {
-    console.error("Status check error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-
 app.use(express.static(PUBLIC_DIR));
 
 // --- Routes ---
-app.get("/healthz", (req, res) => res.json({ ok: true }));
-
-// --- Create Checkout Session ---
 app.post("/create-checkout-session", async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email, mobileUserId } = req.body;
     const priceId = process.env.STRIPE_PRICE_ID;
 
-    if (!email) return res.status(400).json({ error: "Email required" });
-    if (!priceId) return res.status(400).json({ error: "STRIPE_PRICE_ID not set in server env" });
-
-    // Ensure customer exists
-    const customers = await stripe.customers.list({ email, limit: 1 });
-    let customerId = customers.data.length ? customers.data[0].id : (await stripe.customers.create({ email })).id;
+    // Use email if available to find/create customer
+    let customerId = null;
+    if (email) {
+      const customers = await stripe.customers.list({ email, limit: 1 });
+      customerId = customers.data.length ? customers.data[0].id : (await stripe.customers.create({ email })).id;
+    }
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       customer: customerId,
       line_items: [{ price: priceId, quantity: 1 }],
-      metadata: { user_email: email }, // ✅ 2. Critical for Webhook reliability
+      client_reference_id: mobileUserId || null, // THE BRIDGE
+      metadata: { user_email: email || "mobile_checkout" },
       success_url: `${process.env.BASE_URL}/success.html?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.BASE_URL}/index.html`,
     });
 
     res.json({ url: session.url });
   } catch (e) {
-    console.error("Checkout error:", e);
     res.status(500).json({ error: e.message });
   }
 });
 
-// --- Webhook ---
 app.post("/webhook", express.raw({ type: "application/json" }), async (req, res) => {
   const sig = req.headers["stripe-signature"];
   let event;
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
-  } catch (err) {
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
+  } catch (err) { return res.status(400).send(err.message); }
 
   const obj = event.data.object;
   const email = obj.metadata?.user_email || obj.customer_details?.email;
-
-  if (!email) return res.json({ received: true, info: "No email found" });
+  const mobileId = obj.client_reference_id;
 
   if (event.type === "checkout.session.completed" || event.type === "customer.subscription.updated") {
     const subId = obj.subscription || obj.id;
     const subscription = await stripe.subscriptions.retrieve(subId);
-    
-    await updateUser(email, {
+    const patch = {
       is_premium: ["active", "trialing"].includes(subscription.status),
       stripe_customer_id: obj.customer,
       stripe_subscription_id: subId,
       current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
-    });
-  }
+    };
 
-  if (event.type === "customer.subscription.deleted") {
-    await updateUser(email, { is_premium: false, stripe_subscription_id: null });
+    if (mobileId) {
+      await supabase.from("users").update(patch).eq("id", mobileId);
+    } else if (email) {
+      await updateUser(email, patch);
+    }
   }
-
   res.json({ received: true });
 });
 
-// --- Portal ---
-app.post("/create-portal-session", async (req, res) => {
+// Apple Webhook stays the same as your current one
+app.post("/webhook-apple", async (req, res) => {
   try {
-    const { email } = req.body;
-    const customers = await stripe.customers.list({ email, limit: 1 });
-    if (!customers.data.length) return res.status(404).json({ error: "No customer" });
-
-    const portal = await stripe.billingPortal.sessions.create({
-      customer: customers.data[0].id,
-      return_url: `${process.env.BASE_URL}/dashboard.html`,
-    });
-    res.json({ url: portal.url });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+    const { signedPayload } = req.body;
+    const notification = decodeAppleJWS(signedPayload);
+    const transaction = decodeAppleJWS(notification.data.signedTransactionInfo);
+    if (transaction.appAccountToken) {
+      await updateAppleUser(transaction.appAccountToken, transaction);
+    }
+    res.json({ received: true });
+  } catch (err) { res.status(500).send("Error"); }
 });
 
 const PORT = process.env.PORT || 3000;

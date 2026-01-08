@@ -8,9 +8,10 @@
   <style>
     :root {
       --isee: #ffffff;
-      --halo: #f7e37c; /* pastel yellow */
+      --halo: #f7e37c;
       --bg: #111;
       --text: #f5f5f5;
+      --accent: #1DB954; /* Spotify-style Green */
     }
     body {
       font-family: "Poppins", sans-serif;
@@ -23,106 +24,93 @@
       min-height: 100vh;
       text-align: center;
       margin: 0;
-      padding: 1rem;
+      padding: 1.5rem;
     }
-    h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; }
+    .card { background: #1a1a1a; padding: 2rem; border-radius: 20px; border: 1px solid #333; max-width: 400px; width: 100%; }
+    h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 0.5rem; }
     h1 .halo { color: var(--halo); }
-    p { margin: 0.5rem 0; line-height: 1.5; max-width: 420px; }
-    #status { margin-top: 1rem; font-size: 1rem; color: var(--halo); font-weight: 600; }
-    a, button {
-      background: var(--halo);
-      color: #000;
-      border: none;
-      border-radius: 8px;
-      padding: 0.7rem 1.1rem;
+    p { color: #aaa; font-size: 0.95rem; line-height: 1.5; margin-bottom: 1.5rem; }
+    #status { font-weight: 600; color: var(--halo); min-height: 24px; }
+    
+    .btn-group { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+    .btn {
+      padding: 0.8rem 1.2rem;
+      border-radius: 12px;
       font-weight: 700;
-      cursor: pointer;
       text-decoration: none;
-      margin-top: 1.2rem;
-      transition: 0.2s ease;
+      transition: 0.2s;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
     }
-    a:hover, button:hover { opacity: 0.9; transform: translateY(-1px); }
-    footer { margin-top: 2rem; font-size: 0.8rem; opacity: 0.6; }
+    .btn-primary { background: var(--halo); color: #000; }
+    .btn-outline { background: transparent; color: var(--text); border: 1px solid #444; }
+    /* The App Button - stands out */
+    .btn-app { background: var(--accent); color: #fff; margin-bottom: 5px; }
+    
+    .btn:hover { opacity: 0.9; transform: scale(1.02); }
+    footer { margin-top: 2rem; font-size: 0.75rem; opacity: 0.4; }
   </style>
 </head>
 <body>
-  <h1><span class="isee">Isee</span><span class="halo">halo</span> Premium 🎉</h1>
-  <p>Thank you for subscribing! We’re activating your premium access.</p>
-  <p id="status">Checking status…</p>
 
-  <button id="dashboardBtn">Go to Dashboard</button>
-  <a href="/">Back to Home</a>
+  <div class="card">
+    <h1><span class="isee">Isee</span><span class="halo">halo</span> Premium 🎉</h1>
+    <p>Success! Your payment was received. You can now close this window or return to the app.</p>
+    
+    <div id="status">⏳ Syncing with account...</div>
 
-  <footer>© 2025 Iseehalo. All rights reserved.</footer>
+    <div class="btn-group" style="margin-top: 20px;">
+      <a href="iseehalo://success" class="btn btn-app" id="appLink" style="display:none;">Open IseeHalo App</a>
+      
+      <button class="btn btn-primary" id="dashboardBtn">Go to Web Dashboard</button>
+      <a href="/" class="btn btn-outline">Back to Home</a>
+    </div>
+  </div>
 
- <script type="module">
-  // 1. Get params from URL
+  <footer>© 2026 Iseehalo. All rights reserved.</footer>
+
+<script type="module">
   const params = new URLSearchParams(location.search);
   const session_id = params.get("session_id");
-  const email = params.get("email");
+  
+  // Check if we came from the mobile app
+  const isMobile = sessionStorage.getItem('iseehalo_mobile_id');
+  if (isMobile) {
+    document.getElementById('appLink').style.display = 'block';
+  }
 
-  // 2. SMART URL: Points to your Render Backend
   const BACKEND_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
     ? "http://localhost:3000"
-    : "https://iseehalo-web.onrender.com"; // 👈 Ensure this matches your Render Service URL
+    : "https://iseehalo-web.onrender.com";
 
-  // Save email for the dashboard
-  if (email) {
-    try { localStorage.setItem("iseehaloEmail", email); } catch(e) {}
-  }
-
-  async function confirmOnce() {
-    if (!session_id || !email) {
-      console.error("Missing session_id or email");
-      return { ok: false };
-    }
-    
-    try {
-      const res = await fetch(`${BACKEND_URL}/confirm-session`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id, email }),
-      });
-      const data = await res.json();
-      return { ok: res.ok, data };
-    } catch (err) {
-      console.error("Fetch error:", err);
-      return { ok: false };
-    }
-  }
-
-  async function pollConfirm(maxTries = 6, delayMs = 4000) {
+  async function pollStatus() {
     const statusEl = document.getElementById("status");
     
-    for (let i = 1; i <= maxTries; i++) {
-      statusEl.textContent = `⏳ Verifying your payment… (attempt ${i}/${maxTries})`;
-      
-      const { ok, data } = await confirmOnce();
-      
-      if (ok && data?.premium) {
-        statusEl.textContent = "✨ Premium is active! Enjoy ad-free listening.";
-        statusEl.style.color = "#1DB954"; // Change to green on success
-        return true;
-      }
-      
-      // Wait before next attempt
-      await new Promise(r => setTimeout(r, delayMs));
+    // Simple polling to check if the database updated
+    for (let i = 0; i < 5; i++) {
+      try {
+        // We use the mobile_id to check status if available
+        const idToLink = sessionStorage.getItem('iseehalo_mobile_id');
+        const res = await fetch(`${BACKEND_URL}/status?id=${idToLink}`);
+        const data = await res.json();
+        
+        if (data?.user?.is_premium) {
+          statusEl.textContent = "✨ Account Upgraded!";
+          statusEl.style.color = "#1DB954";
+          return;
+        }
+      } catch (e) { console.log("Checking..."); }
+      await new Promise(r => setTimeout(r, 3000));
     }
-    
-    statusEl.textContent = "Payment received! It's taking a moment to sync. Please check your dashboard in 1 minute.";
-    return false;
+    statusEl.textContent = "Processing... check the app in a moment.";
   }
 
   document.getElementById("dashboardBtn").addEventListener("click", () => {
     window.location.href = "/dashboard";
   });
 
-  // Start checking immediately
-  if (session_id) {
-    pollConfirm();
-  } else {
-    document.getElementById("status").textContent = "No active session found.";
-  }
+  if (session_id) pollStatus();
 </script>
 </body>
 </html>

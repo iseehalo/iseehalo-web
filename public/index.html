@@ -69,14 +69,12 @@
 
     const show = (text) => (statusEl.textContent = text || "");
 
-    // --- 1. NEW: CATCH USER ID FROM APP ---
-    // This looks for ?user_id= in the URL (sent by the iPhone)
+    // --- 1. CATCH USER ID FROM APP ---
     const urlParams = new URLSearchParams(window.location.search);
     const mobileUserId = urlParams.get('user_id');
 
     if (mobileUserId) {
       console.log("📱 Mobile ID detected:", mobileUserId);
-      // We save it so we don't lose it if the page refreshes
       sessionStorage.setItem('iseehalo_mobile_id', mobileUserId);
       show("Account recognized. Ready to upgrade!");
     }
@@ -99,30 +97,29 @@
     subscribeBtn.addEventListener("click", async () => {
       try {
         subscribeBtn.disabled = true;
-        show("Verifying session...");
-
-        // Get the stored mobile ID if it exists
+        
+        // Priority: Check if we have a mobile user ID from the app link
         const savedMobileId = sessionStorage.getItem('iseehalo_mobile_id');
+        
+        // Secondary: Check if there is a web-logged-in user
+        const { data: { user } } = await supabase.auth.getUser();
 
-        // Check Web User
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-        // If no web user AND no mobile ID, they must sign in
-        if (!user && !savedMobileId) {
-          show("❌ Please sign in first.");
+        if (!savedMobileId && !user) {
+          show("❌ Please sign in to upgrade.");
           setTimeout(() => window.location.href = "/auth.html", 2000);
+          subscribeBtn.disabled = false;
           return;
         }
 
-        show("Connecting to Stripe...");
+        show(savedMobileId ? "Syncing app account..." : "Connecting to Stripe...");
         
-        // --- 2. UPDATED BACKEND CALL ---
+        // --- 2. BACKEND CALL ---
         const res = await fetch(`${BASE_URL}/create-checkout-session`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ 
             email: user ? user.email : null,
-            mobileUserId: savedMobileId // Pass the mobile ID to the server
+            mobileUserId: savedMobileId // This is the 'client_reference_id' for Stripe
           }),
         });
 
@@ -134,10 +131,11 @@
         const result = await res.json();
 
         if (result.url) {
-          show("Redirecting to Stripe...");
+          show("Redirecting to secure checkout...");
           window.location.href = result.url;
         } else {
           show("Error: No checkout URL received.");
+          subscribeBtn.disabled = false;
         }
 
       } catch (err) {
@@ -150,7 +148,7 @@
     signOut.addEventListener("click", async (e) => {
       e.preventDefault();
       await supabase.auth.signOut();
-      sessionStorage.removeItem('iseehalo_mobile_id'); // Clear on sign out
+      sessionStorage.removeItem('iseehalo_mobile_id');
       window.location.reload();
     });
 
